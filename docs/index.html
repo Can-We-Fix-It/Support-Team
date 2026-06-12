@@ -1,410 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Team - Issue Tracking Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Dashboard</title>
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    margin: 0;
+    padding: 20px;
+    color: white;
+}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
 
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-            padding: 20px;
-        }
+header {
+    text-align: center;
+    margin-bottom: 20px;
+}
 
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
+button {
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-top: 10px;
+}
 
-        .subtitle {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+.stats {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+}
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 40px;
-        }
+.stat-box {
+    background: white;
+    color: black;
+    padding: 15px;
+    border-radius: 10px;
+    flex: 1;
+    text-align: center;
+}
 
-        .stat-box {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+.main {
+    display: flex;
+    gap: 20px;
+}
 
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-        }
+.sidebar {
+    width: 250px;
+    background: white;
+    color: black;
+    border-radius: 10px;
+    padding: 10px;
+}
 
-        .stat-label {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
+.milestones {
+    flex: 1;
+}
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .team-members {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            height: fit-content;
-            position: sticky;
-            top: 20px;
-        }
-
-        .team-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .member-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .member-item:hover {
-            background: #f5f5f5;
-        }
-
-        .member-item.active {
-            background: #667eea;
-            color: white;
-            font-weight: bold;
-        }
-
-        .member-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex: 1;
-        }
-
-        .member-badge {
-            background: #667eea;
-            color: white;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-        }
-
-        .member-item.active .member-badge {
-            background: white;
-            color: #667eea;
-        }
-
-        .severity-filter {
-            display: flex;
-            gap: 8px;
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
-            background: #f9f9f9;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            flex: 1;
-            min-width: 70px;
-            padding: 8px 12px;
-            border: 2px solid;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.75em;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .filter-btn.severe { border-color: #ff4444; color: #ff4444; }
-        .filter-btn.medium { border-color: #ffaa00; color: #ffaa00; }
-        .filter-btn.low { border-color: #44aa44; color: #44aa44; }
-
-        .filter-btn.active.severe { background: #ff4444; color: white; }
-        .filter-btn.active.medium { background: #ffaa00; color: white; }
-        .filter-btn.active.low { background: #44aa44; color: white; }
-
-        .milestones {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-        }
-
-        .milestone-card {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .milestone-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-        }
-
-        .milestone-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-        }
-
-        .progress-bar {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            height: 8px;
-            overflow: hidden;
-            margin-bottom: 8px;
-            margin-top: 12px;
-        }
-
-        .progress-fill {
-            background: #4ade80;
-            height: 100%;
-        }
-
-        .milestone-content {
-            padding: 20px;
-        }
-
-        .issue-item {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 15px;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .loading, .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: white;
-        }
-
-        .refresh-btn {
-            background: white;
-            color: #667eea;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-    </style>
+.card {
+    background: white;
+    color: black;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+</style>
 </head>
 
 <body>
-<div class="container">
-    <header>
-        <h1>🎯 Support Dashboard</h1>
-        <p class="subtitle">GitHub Issue Tracker</p>
-        <button class="refresh-btn" onclick="fetchAndRender()">🔄 Refresh</button>
-    </header>
 
-    <div id="milestones" class="loading">Loading...</div>
+<div class="container">
+
+<header>
+    <h1>Support Dashboard</h1>
+    <button onclick="fetchAndRender()">🔄 Refresh</button>
+</header>
+
+<!-- MUST EXIST ELEMENTS (fixes your error) -->
+<div class="stats" id="stats"></div>
+
+<div class="main">
+    <div class="sidebar" id="teamMembers"></div>
+    <div class="milestones" id="milestones"></div>
+</div>
+
 </div>
 
 <script>
-const REPO_OWNER = 'Can-We-Fix-It';
-const REPO_NAME = 'Support-Team';
+const OWNER = "Can-We-Fix-It";
+const REPO = "Support-Team";
 
 let allMilestones = [];
 let selectedMember = null;
-let selectedSeverityFilter = null;
 
-/* =========================
-   PRIORITY
-========================= */
-function getPriorityFromIssue(issue) {
-    if (!issue.labels || !Array.isArray(issue.labels)) return null;
-
-    for (let label of issue.labels) {
-        if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
-            return label.name;
-        }
-    }
-    return null;
-}
-
-/* =========================
-   NAME
-========================= */
-function getDisplayName(user) {
-    return user?.login || "Unassigned";
-}
-
-/* =========================
-   FETCH MILESTONES
-========================= */
+/* ---------------- FETCH ---------------- */
 async function fetchMilestones() {
-    const res = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`
-    );
-
-    if (!res.ok) throw new Error("Failed to load milestones");
+    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/milestones?state=all`);
     return await res.json();
 }
 
-/* =========================
-   FETCH ISSUES
-========================= */
-async function fetchIssuesForMilestone(milestoneNumber) {
-    const res = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`
-    );
-
-    if (!res.ok) throw new Error("Failed to load issues");
+async function fetchIssues(milestone) {
+    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/issues?milestone=${milestone}&state=all`);
     return await res.json();
 }
 
-/* =========================
-   MAIN LOAD (MANUAL ONLY)
-========================= */
+/* ---------------- LOAD ---------------- */
 async function fetchAndRender() {
-    try {
-        document.getElementById('milestones').innerHTML =
-            '<div class="loading">Loading...</div>';
+    document.getElementById("milestones").innerHTML = "Loading...";
 
-        const milestones = await fetchMilestones();
+    const milestones = await fetchMilestones();
 
-        const data = await Promise.all(
-            milestones.map(async (m) => {
-                const issues = await fetchIssuesForMilestone(m.number);
-                return { ...m, issues };
-            })
-        );
+    const data = await Promise.all(
+        milestones.map(async m => {
+            const issues = await fetchIssues(m.number);
+            return { ...m, issues };
+        })
+    );
 
-        allMilestones = data;
-        render();
-
-    } catch (err) {
-        document.getElementById('milestones').innerHTML =
-            `<div class="error">${err.message}</div>`;
-    }
+    allMilestones = data;
+    render();
 }
 
-/* =========================
-   RENDER DASHBOARD
-========================= */
+/* ---------------- RENDER ---------------- */
 function render() {
-    let milestones = allMilestones;
+
+    let filtered = allMilestones;
 
     if (selectedMember) {
-        milestones = milestones.filter(m => m.title === selectedMember);
+        filtered = filtered.filter(m => m.title === selectedMember);
     }
 
-    if (selectedSeverityFilter) {
-        milestones = milestones.filter(m =>
-            m.issues.some(i => getPriorityFromIssue(i) === selectedSeverityFilter)
-        );
-    }
+    /* STATS */
+    const total = filtered.reduce((a, m) => a + m.issues.length, 0);
 
-    /* TEAM MEMBERS */
+    document.getElementById("stats").innerHTML = `
+        <div class="stat-box">Total Issues: ${total}</div>
+        <div class="stat-box">Milestones: ${filtered.length}</div>
+    `;
+
+    /* TEAM */
     const members = [...new Set(allMilestones.map(m => m.title))];
 
-    document.getElementById("teamMembers").innerHTML = members.map(m => `
-        <div class="member-item ${selectedMember === m ? 'active' : ''}"
-             onclick="selectMember('${m}')">
-            ${m}
-        </div>
-    `).join("");
+    document.getElementById("teamMembers").innerHTML = `
+        <h3>Team</h3>
+        ${members.map(m => `
+            <div onclick="selectMember('${m}')" style="cursor:pointer;padding:5px;">
+                ${m}
+            </div>
+        `).join("")}
+    `;
 
     /* MILESTONES */
-    document.getElementById("milestones").innerHTML = milestones.map(m => {
+    document.getElementById("milestones").innerHTML = filtered.map(m => `
+        <div class="card">
+            <h3>${m.title}</h3>
+            <p>${m.issues.length} issues</p>
 
-        const issues = selectedSeverityFilter
-            ? m.issues.filter(i => getPriorityFromIssue(i) === selectedSeverityFilter)
-            : m.issues;
-
-        return `
-        <div class="milestone-card">
-            <div class="milestone-header">
-                <div class="milestone-title">${m.title}</div>
-                <div>#${m.number}</div>
-            </div>
-
-            <div class="milestone-content">
-                ${issues.length === 0 ? `<p>No issues</p>` : issues.map(i => `
-                    <div class="issue-item">
-                        <strong>${i.title}</strong><br>
-                        <small>#${i.number}</small>
-                        <p>👤 ${getDisplayName(i.assignee)}</p>
-                        <p>🏷️ ${getPriorityFromIssue(i) || "No Priority"}</p>
-                        <a href="${i.html_url}" target="_blank">View</a>
-                    </div>
-                `).join("")}
-            </div>
+            ${m.issues.map(i => `
+                <div>
+                    • ${i.title} (#${i.number})
+                </div>
+            `).join("")}
         </div>
-        `;
-    }).join("");
+    `).join("");
 }
 
-/* =========================
-   FILTERS
-========================= */
+/* ---------------- FILTER ---------------- */
 function selectMember(name) {
     selectedMember = selectedMember === name ? null : name;
     render();
 }
 
-function toggleSeverityFilter(level) {
-    selectedSeverityFilter =
-        selectedSeverityFilter === level ? null : level;
-    render();
-}
-
-/* =========================
-   START (NO AUTO REFRESH)
-========================= */
-window.onload = () => {
-    fetchAndRender();
-};
+/* ---------------- START ---------------- */
+window.onload = fetchAndRender;
 </script>
+
 </body>
 </html>
