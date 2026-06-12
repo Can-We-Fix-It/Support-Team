@@ -124,11 +124,16 @@
             flex: 1;
         }
 
+        .member-name {
+            flex: 1;
+        }
+
         .member-severity-badge {
             font-size: 0.7em;
-            padding: 2px 6px;
-            border-radius: 3px;
+            padding: 3px 8px;
+            border-radius: 12px;
             font-weight: bold;
+            margin-left: 8px;
         }
 
         .severity-severe-badge {
@@ -193,7 +198,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         .milestone-title {
@@ -239,33 +244,34 @@
             font-weight: bold;
             font-size: 0.85em;
             transition: all 0.2s ease;
-            background: rgba(255, 255, 255, 0.2);
+            opacity: 0.4;
             color: white;
         }
 
-        .severity-btn:hover {
-            opacity: 0.8;
+        .severity-btn.severe {
+            background: #ff4444;
+        }
+
+        .severity-btn.medium {
+            background: #ffaa00;
+        }
+
+        .severity-btn.low {
+            background: #44aa44;
         }
 
         .severity-btn.selected {
+            opacity: 1;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             transform: scale(1.05);
         }
 
-        .clear-severity-btn {
-            padding: 8px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.85em;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            transition: all 0.2s ease;
+        .severity-btn:hover {
+            opacity: 0.7;
         }
 
-        .clear-severity-btn:hover {
-            opacity: 0.8;
+        .severity-btn.selected:hover {
+            opacity: 1;
         }
 
         .progress-bar {
@@ -454,7 +460,7 @@
         </div>
 
         <div class="footer">
-            <p>💡 Click team members to filter • Set severity levels • Only items matching severity show up</p>
+            <p>💡 Click team members to filter • Set severity levels • Greyed out buttons show inactive levels</p>
         </div>
     </div>
 
@@ -470,7 +476,6 @@
 
         let allMilestones = [];
         let selectedMember = null;
-        let selectedSeverity = null;
 
         function loadCompletedIssues() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -500,10 +505,8 @@
             if (severities[milestoneName] === severity) {
                 // Toggle off if clicking same severity
                 delete severities[milestoneName];
-                selectedSeverity = null;
             } else {
                 severities[milestoneName] = severity;
-                selectedSeverity = severity;
             }
             saveSeverities(severities);
             fetchAndRender();
@@ -582,21 +585,8 @@
             
             uniqueMembers.forEach((member, index) => {
                 const memberMilestones = milestones.filter(m => m.title === member);
+                const totalIssues = memberMilestones.reduce((sum, m) => sum + m.issues.length, 0);
                 const severity = getSeverity(member);
-                
-                // Count issues based on severity filter for this member
-                let totalIssues = 0;
-                memberMilestones.forEach(m => {
-                    if (severity) {
-                        // Only count if severity matches
-                        if (severities[m.title] === severity) {
-                            totalIssues += m.issues.length;
-                        }
-                    } else {
-                        totalIssues += m.issues.length;
-                    }
-                });
-
                 const isActive = selectedMember === member ? 'active' : '';
                 
                 let severityBadgeHtml = '';
@@ -607,7 +597,7 @@
                 membersHtml += `
                     <div class="member-item ${isActive}" onclick="selectMember('${escapeHtml(member)}')">
                         <div class="member-info">
-                            <span>${escapeHtml(member)}</span>
+                            <span class="member-name">${escapeHtml(member)}</span>
                             ${severityBadgeHtml}
                         </div>
                         <span class="member-badge">${totalIssues}</span>
@@ -635,29 +625,25 @@
             let totalIssues = 0;
             let completedCount = 0;
 
-            // Calculate stats and apply severity filtering
+            // Calculate stats
             filteredMilestones.forEach(milestone => {
-                const severity = severities[milestone.title];
-                
                 milestone.issues.forEach(issue => {
-                    // Only count if no severity filter or severity matches
-                    if (!severity || severity) {
-                        totalIssues++;
-                        if (completed.includes(issue.id)) {
-                            completedCount++;
-                        }
+                    totalIssues++;
+                    if (completed.includes(issue.id)) {
+                        completedCount++;
                     }
                 });
             });
 
             // Render stats
             let filterLabel = '';
-            if (selectedMember && selectedSeverity) {
-                filterLabel = ` (${selectedMember} - ${selectedSeverity})`;
-            } else if (selectedMember) {
-                filterLabel = ` (${selectedMember})`;
-            } else if (selectedSeverity) {
-                filterLabel = ` (${selectedSeverity})`;
+            if (selectedMember) {
+                const memberSeverity = getSeverity(selectedMember);
+                if (memberSeverity) {
+                    filterLabel = ` (${selectedMember} - ${memberSeverity})`;
+                } else {
+                    filterLabel = ` (${selectedMember})`;
+                }
             }
 
             const statsHtml = `
@@ -680,18 +666,12 @@
             let milestonesHtml = '';
             filteredMilestones.forEach((milestone, index) => {
                 const severity = severities[milestone.title];
-                
-                // Filter issues by severity if set
-                const displayIssues = severity 
-                    ? milestone.issues  // All issues show if severity is set for this milestone
-                    : milestone.issues;
-
-                const milestoneCompleted = displayIssues.filter(issue => completed.includes(issue.id)).length;
-                const progress = displayIssues.length > 0 ? (milestoneCompleted / displayIssues.length) * 100 : 0;
+                const milestoneCompleted = milestone.issues.filter(issue => completed.includes(issue.id)).length;
+                const progress = milestone.issues.length > 0 ? (milestoneCompleted / milestone.issues.length) * 100 : 0;
                 const color = COLORS[index % COLORS.length];
 
                 let issuesHtml = '';
-                displayIssues.forEach(issue => {
+                milestone.issues.forEach(issue => {
                     const isCompleted = completed.includes(issue.id);
                     issuesHtml += `
                         <div class="issue-item ${isCompleted ? 'completed' : ''}">
@@ -712,14 +692,14 @@
                                 ${severity ? `<span class="severity-badge severity-${severity}">${severity.toUpperCase()}</span>` : ''}
                             </div>
                             <div class="severity-selector">
-                                <button class="severity-btn ${severity === 'severe' ? 'selected' : ''}" style="background: #ff4444;" onclick="setSeverity('${escapeHtml(milestone.title)}', 'severe')">🔴 Severe</button>
-                                <button class="severity-btn ${severity === 'medium' ? 'selected' : ''}" style="background: #ffaa00;" onclick="setSeverity('${escapeHtml(milestone.title)}', 'medium')">🟠 Medium</button>
-                                <button class="severity-btn ${severity === 'low' ? 'selected' : ''}" style="background: #44aa44;" onclick="setSeverity('${escapeHtml(milestone.title)}', 'low')">🟢 Low</button>
+                                <button class="severity-btn severe ${severity === 'severe' ? 'selected' : ''}" onclick="setSeverity('${escapeHtml(milestone.title)}', 'severe')">🔴 Severe</button>
+                                <button class="severity-btn medium ${severity === 'medium' ? 'selected' : ''}" onclick="setSeverity('${escapeHtml(milestone.title)}', 'medium')">🟠 Medium</button>
+                                <button class="severity-btn low ${severity === 'low' ? 'selected' : ''}" onclick="setSeverity('${escapeHtml(milestone.title)}', 'low')">🟢 Low</button>
                             </div>
                             <div class="progress-bar" style="margin-top: 12px;">
                                 <div class="progress-fill" style="width: ${progress}%"></div>
                             </div>
-                            <div class="progress-text">${milestoneCompleted} of ${displayIssues.length} completed</div>
+                            <div class="progress-text">${milestoneCompleted} of ${milestone.issues.length} completed</div>
                         </div>
                         <div class="milestone-content">
                             ${issuesHtml || '<div class="empty-state">No issues in this milestone</div>'}
