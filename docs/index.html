@@ -95,33 +95,21 @@ const REPO = "Can-We-Fix-It/Support-Team";
 let allIssues = [];
 let selectedAgent = null;
 
-function getPriority(issue) {
+function getPriority(labels) {
+    if (!labels) return "low";
 
-    // 1. Try PROJECT FIELD (your real setup)
-    if (issue.project_items?.nodes?.length > 0) {
-        const fields = issue.project_items.nodes[0].fieldValues?.nodes || [];
+    const priority = labels.find(l =>
+        l.name.toLowerCase().startsWith("priority:")
+    );
 
-        for (let f of fields) {
-            const value = (f.name || f.text || "").toLowerCase();
+    if (!priority) return "low";
 
-            if (value.includes("urgent")) return "urgent";
-            if (value.includes("high")) return "high";
-            if (value.includes("medium")) return "medium";
-            if (value.includes("low")) return "low";
-        }
-    }
+    const value = priority.name.toLowerCase();
 
-    // 2. fallback: labels
-    if (issue.labels) {
-        for (let l of issue.labels) {
-            const name = l.name.toLowerCase();
-
-            if (name.includes("urgent")) return "urgent";
-            if (name.includes("high")) return "high";
-            if (name.includes("medium")) return "medium";
-            if (name.includes("low")) return "low";
-        }
-    }
+    if (value.includes("urgent")) return "urgent";
+    if (value.includes("high")) return "high";
+    if (value.includes("medium")) return "medium";
+    if (value.includes("low")) return "low";
 
     return "low";
 }
