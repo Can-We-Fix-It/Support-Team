@@ -3,273 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Team - Issue Tracking Dashboard</title>
+<title>Support Dashboard</title>
 
 <style>
-/* ===== YOUR STYLE KEPT (UNCHANGED STRUCTURE) ===== */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
-}
-
-.container { max-width: 1200px; margin: auto; }
-
-header {
-    text-align: center;
+    font-family: Arial;
+    margin: 0;
+    background: linear-gradient(135deg,#667eea,#764ba2);
     color: white;
-    margin-bottom: 40px;
 }
 
-h1 {
-    font-size: 2.5em;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-}
+.container { padding: 20px; }
 
-.subtitle { opacity: 0.9; }
+h1 { text-align: center; }
 
 .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin-bottom: 40px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
 }
 
 .stat-box {
     background: white;
-    padding: 20px;
-    border-radius: 10px;
-    text-align: center;
-}
-
-.stat-number {
-    font-size: 2em;
-    font-weight: bold;
-    color: #667eea;
-}
-
-.main-content {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: 25px;
-}
-
-.team-members {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.team-header {
-    background: #667eea;
-    color: white;
+    color: black;
     padding: 15px;
+    border-radius: 10px;
+    min-width: 120px;
     text-align: center;
-    font-weight: bold;
 }
 
-.member-item {
-    padding: 12px 15px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
+.main {
     display: flex;
-    justify-content: space-between;
-}
-
-.member-item:hover { background: #f5f5f5; }
-
-.member-item.active {
-    background: #667eea;
-    color: white;
-}
-
-.member-badge {
-    background: #667eea;
-    color: white;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-}
-
-.milestones {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
 }
 
-.milestone-card {
+.sidebar {
+    width: 250px;
     background: white;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.milestone-header {
-    background: #667eea;
-    color: white;
-    padding: 15px;
-}
-
-.issue-item {
+    color: black;
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-radius: 10px;
 }
 
-.issue-title {
-    font-weight: 500;
+.card {
+    background: white;
+    color: black;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
 }
 
-.issue-meta {
+.priority {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
     font-size: 12px;
-    color: #666;
-    margin-top: 5px;
+    color: white;
 }
 
+.low { background: green; }
+.medium { background: orange; }
+.high { background: red; }
+.urgent { background: darkred; }
+
+.issue {
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+    margin-top: 10px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-
-<header>
-    <h1>🎯 Support Dashboard</h1>
-    <p class="subtitle">GitHub Issues by Agent & Priority</p>
-</header>
+<h1>Support Team Dashboard</h1>
 
 <div class="stats" id="stats"></div>
 
-<div class="main-content">
-
-    <div class="team-members">
-        <div class="team-header">👥 Agents</div>
-        <div id="team"></div>
-    </div>
-
-    <div class="milestones" id="board"></div>
-
+<div class="main">
+    <div class="sidebar" id="agents"></div>
+    <div id="issues"></div>
 </div>
 
 </div>
 
 <script>
-const REPO_OWNER = "Can-We-Fix-It";
-const REPO_NAME = "Support-Team";
+const REPO = "Can-We-Fix-It/Support-Team";
 
-let allData = [];
+let allIssues = [];
 let selectedAgent = null;
 
-function getPriority(issue) {
-    const labels = (issue.labels || []).map(l => l.name.toLowerCase());
+function getPriority(labels) {
+    if (!labels) return "low";
 
-    if (labels.some(l => l.includes("urgent"))) return "Urgent";
-    if (labels.some(l => l.includes("high"))) return "High";
-    if (labels.some(l => l.includes("medium"))) return "Medium";
-    if (labels.some(l => l.includes("low"))) return "Low";
-
-    return "None";
+    for (let l of labels) {
+        let name = l.name.toLowerCase();
+        if (["urgent","high","medium","low"].includes(name)) return name;
+    }
+    return "low";
 }
 
-function getAgents(issue) {
-    const priorities = ["urgent","high","medium","low"];
+function getAgent(labels) {
+    if (!labels) return "Unassigned";
 
-    return (issue.labels || [])
-        .map(l => l.name)
-        .filter(name => !priorities.some(p => name.toLowerCase().includes(p)));
+    for (let l of labels) {
+        // everything EXCEPT priority labels = agent
+        let name = l.name;
+        if (!["urgent","high","medium","low"].includes(name.toLowerCase())) {
+            return name;
+        }
+    }
+    return "Unassigned";
 }
 
-async function fetchData() {
+async function fetchIssues() {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/issues?state=open&per_page=100`);
 
-    const [issues, milestones] = await Promise.all([
-        fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100`).then(r => r.json()),
-        fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all`).then(r => r.json())
-    ]);
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error("GitHub API error: " + res.status + " " + text);
+    }
 
-    allData = milestones.map(m => ({
-        ...m,
-        issues: issues.filter(i =>
-            i.milestone && i.milestone.number === m.number
-        )
-    }));
+    const data = await res.json();
 
-    render();
+    // filter out PRs
+    return data.filter(i => !i.pull_request);
 }
 
-function getAllAgents() {
-    const set = new Set();
+function renderAgents() {
+    let map = {};
 
-    allData.forEach(m => {
-        m.issues.forEach(i => {
-            getAgents(i).forEach(a => set.add(a));
-        });
+    allIssues.forEach(i => {
+        let agent = getAgent(i.labels);
+        map[agent] = (map[agent] || 0) + 1;
     });
 
-    return [...set];
+    let html = "";
+    for (let agent in map) {
+        html += `
+            <div onclick="selectAgent('${agent}')"
+                 style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;">
+                ${agent} (${map[agent]})
+            </div>
+        `;
+    }
+
+    document.getElementById("agents").innerHTML = html;
 }
 
-function render() {
+function renderIssues() {
+    let filtered = selectedAgent
+        ? allIssues.filter(i => getAgent(i.labels) === selectedAgent)
+        : allIssues;
 
-    const agents = getAllAgents();
-
-    // ===== AGENTS =====
-    document.getElementById("team").innerHTML = agents.map(a => `
-        <div class="member-item ${selectedAgent===a?"active":""}"
-             onclick="selectAgent('${a}')">
-            ${a}
-            <div class="member-badge">
-                ${allData.reduce((t,m)=>t+m.issues.filter(i=>getAgents(i).includes(a)).length,0)}
-            </div>
-        </div>
-    `).join("");
-
-    // ===== BOARD =====
     let html = "";
 
-    allData.forEach(m => {
-
-        let issues = m.issues;
-
-        if (selectedAgent) {
-            issues = issues.filter(i => getAgents(i).includes(selectedAgent));
-        }
+    filtered.forEach(i => {
+        let priority = getPriority(i.labels);
 
         html += `
-        <div class="milestone-card">
-            <div class="milestone-header">${m.title}</div>
+        <div class="card">
+            <b>${i.title}</b><br>
 
-            ${issues.map(i => `
-                <div class="issue-item">
-                    <div class="issue-title">${i.title}</div>
-                    <div class="issue-meta">
-                        Priority: ${getPriority(i)} |
-                        Agents: ${getAgents(i).join(", ") || "None"}
-                    </div>
-                </div>
-            `).join("") || "<div class='issue-item'>No issues</div>"}
+            <span class="priority ${priority}">
+                ${priority.toUpperCase()}
+            </span>
 
+            <div class="issue">
+                Agent: ${getAgent(i.labels)} <br>
+                #${i.number} - <a href="${i.html_url}" target="_blank">View</a>
+            </div>
         </div>`;
     });
 
-    document.getElementById("board").innerHTML = html;
+    document.getElementById("issues").innerHTML = html;
 }
 
-function selectAgent(a) {
-    selectedAgent = selectedAgent === a ? null : a;
-    render();
+function selectAgent(name) {
+    selectedAgent = name;
+    renderIssues();
 }
 
-fetchData();
+async function load() {
+    try {
+        allIssues = await fetchIssues();
+        renderAgents();
+        renderIssues();
+    } catch (err) {
+        document.body.innerHTML = "<h2 style='color:white;text-align:center'>Error: " + err.message + "</h2>";
+    }
+}
+
+load();
 </script>
 
 </body>
