@@ -258,8 +258,6 @@ const STORAGE_KEY = 'supportTeamDashboard_completed';
 // 🔐 PUT YOUR NEW TOKEN HERE (classic token with repo access)
 const GITHUB_TOKEN = "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";
 
-const STORAGE_KEY = "supportTeamDashboard_completed";
-
 let allIssues = [];
 let selectedMember = null;
 let selectedSeverityFilter = null;
@@ -271,7 +269,7 @@ function getHeaders() {
     };
 }
 
-// -------------------- FETCH ISSUES --------------------
+// ---------------- FETCH ----------------
 async function fetchIssues() {
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100`;
 
@@ -285,7 +283,7 @@ async function fetchIssues() {
     return await res.json();
 }
 
-// -------------------- PRIORITY --------------------
+// ---------------- PRIORITY ----------------
 function getPriority(issue) {
     if (!issue.labels) return null;
 
@@ -297,12 +295,12 @@ function getPriority(issue) {
     return null;
 }
 
-// -------------------- DISPLAY NAME --------------------
-function getDisplayName(user) {
+// ---------------- NAME ----------------
+function getName(user) {
     return user?.login || "Unassigned";
 }
 
-// -------------------- RENDER --------------------
+// ---------------- RENDER ----------------
 function render() {
     let issues = allIssues;
 
@@ -311,30 +309,24 @@ function render() {
     }
 
     if (selectedMember) {
-        issues = issues.filter(i => getDisplayName(i.assignee) === selectedMember);
+        issues = issues.filter(i => getName(i.assignee) === selectedMember);
     }
-
-    // STATS
-    const total = issues.length;
-    const completed = 0;
 
     document.getElementById("stats").innerHTML = `
         <div class="stat-box">
-            <div class="stat-number">${total}</div>
+            <div class="stat-number">${issues.length}</div>
             <div class="stat-label">Issues</div>
         </div>
     `;
 
-    // GROUP MEMBERS
-    const members = [...new Set(allIssues.map(i => getDisplayName(i.assignee)))];
+    const members = [...new Set(allIssues.map(i => getName(i.assignee)))];
 
     document.getElementById("teamMembers").innerHTML = members.map(m => `
         <div class="member-item" onclick="selectMember('${m}')">
-            <div class="member-name">${m}</div>
+            ${m}
         </div>
     `).join("");
 
-    // ISSUES LIST
     document.getElementById("milestones").innerHTML = issues.map(issue => `
         <div class="milestone-card">
             <div class="milestone-header">
@@ -342,16 +334,15 @@ function render() {
                 <div>#${issue.number}</div>
             </div>
             <div class="milestone-content">
-                <p>👤 ${getDisplayName(issue.assignee)}</p>
+                <p>👤 ${getName(issue.assignee)}</p>
                 <p>🏷️ ${getPriority(issue) || "No Priority"}</p>
-                <a href="${issue.html_url}" target="_blank">View on GitHub</a>
+                <a href="${issue.html_url}" target="_blank">View</a>
             </div>
         </div>
     `).join("");
-
 }
 
-// -------------------- FILTERS --------------------
+// ---------------- FILTERS ----------------
 function selectMember(name) {
     selectedMember = selectedMember === name ? null : name;
     render();
@@ -362,7 +353,7 @@ function toggleSeverityFilter(level) {
     render();
 }
 
-// -------------------- LOAD --------------------
+// ---------------- LOAD ----------------
 async function fetchAndRender() {
     try {
         document.getElementById("milestones").innerHTML = "Loading...";
@@ -380,7 +371,6 @@ async function fetchAndRender() {
     }
 }
 
-// -------------------- START --------------------
 window.onload = fetchAndRender;
 </script>
 </body>
