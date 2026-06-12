@@ -356,23 +356,55 @@ function renderTeamMembers(issues) {
     const el = getEl('teamMembers');
     if (!el) return;
 
-    const members = new Map();
+    const agentMap = new Map();
 
+    // 🔥 Build agents dynamically from labels
     issues.forEach(issue => {
-        const name = issue.assignee?.login || 'Unassigned';
-        members.set(name, (members.get(name) || 0) + 1);
+        const labels = issue.labels || [];
+
+        labels.forEach(label => {
+            const name = label.name;
+
+            // ignore severity labels
+            if (["Severe", "Medium", "Low"].includes(name)) return;
+
+            // treat EVERYTHING else as agent
+            if (!agentMap.has(name)) {
+                agentMap.set(name, {
+                    total: 0,
+                    severe: 0,
+                    medium: 0,
+                    low: 0
+                });
+            }
+
+            const data = agentMap.get(name);
+            data.total++;
+
+            const priority = getPriority(issue);
+            if (priority === "Severe") data.severe++;
+            if (priority === "Medium") data.medium++;
+            if (priority === "Low") data.low++;
+        });
     });
 
     let html = '';
 
-    members.forEach((count, member) => {
+    agentMap.forEach((data, agent) => {
+
         html += `
-            <div class="member-item ${selectedMember === member ? 'active' : ''}"
-                 onclick="selectMember('${member.replace(/'/g, "\\'")}')">
+            <div class="member-item ${selectedAgent === agent ? 'active' : ''}"
+                 onclick="selectAgent('${agent}')">
+
                 <div class="member-info">
-                    <span class="member-name">${member}</span>
+                    <span class="member-name">${agent}</span>
+
+                    <span class="member-severity-badge severity-severe-badge">🔴 ${data.severe}</span>
+                    <span class="member-severity-badge severity-medium-badge">🟠 ${data.medium}</span>
+                    <span class="member-severity-badge severity-low-badge">🟢 ${data.low}</span>
                 </div>
-                <span class="member-badge">${count}</span>
+
+                <span class="member-badge">${data.total}</span>
             </div>
         `;
     });
