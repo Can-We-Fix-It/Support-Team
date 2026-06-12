@@ -267,10 +267,10 @@ let selectedSeverityFilter = null;
 function getHeaders() {
     return {
         "Accept": "application/vnd.github.v3+json",
-        "Authorization": `Bearer ${GITHUB_TOKEN}`
+        "Authorization": `token ${GITHUB_TOKEN}`
     };
 }
-
+    
 // ---------------- SAFE ERROR HANDLING ----------------
 function getEl(id) {
     return document.getElementById(id);
