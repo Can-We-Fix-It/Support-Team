@@ -253,17 +253,21 @@
 <script>
 const REPO_OWNER = 'Can-We-Fix-It';
 const REPO_NAME = 'Support-Team';
+const STORAGE_KEY = 'supportTeamDashboard_completed';
 
 // 🔐 PUT YOUR NEW TOKEN HERE (classic token with repo access)
 const GITHUB_TOKEN = "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";
-
-const STORAGE_KEY = 'supportTeamDashboard_completed';
 
 let allMilestones = [];
 let selectedMember = null;
 let selectedSeverityFilter = null;
 
-// -------------------- HEADERS (IMPORTANT FIX) --------------------
+// -------------------- SAFE DOM ACCESS --------------------
+function getEl(id) {
+    return document.getElementById(id);
+}
+
+// -------------------- HEADERS --------------------
 function getHeaders() {
     return {
         "Accept": "application/vnd.github.v3+json",
@@ -271,42 +275,40 @@ function getHeaders() {
     };
 }
 
-// -------------------- ERROR HELPERS --------------------
+// -------------------- ERROR HANDLING (FIXED) --------------------
 function showError(message) {
-    document.getElementById('error').innerHTML =
-        `<div class="error">⚠️ ${message}</div>`;
+    const el = getEl('error');
+    if (!el) return;
+    el.innerHTML = `<div class="error">⚠️ ${message}</div>`;
 }
 
 function clearError() {
-    document.getElementById('error').innerHTML = '';
+    const el = getEl('error');
+    if (!el) return;
+    el.innerHTML = '';
 }
 
 // -------------------- FETCH MILESTONES --------------------
 async function fetchMilestones() {
-    clearError();
-
     try {
-        console.log("➡️ Fetching milestones...");
+        clearError();
 
         const response = await fetch(
             `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`,
             { headers: getHeaders() }
         );
 
-        console.log("⬅️ Response status:", response.status);
-
         const text = await response.text();
-        console.log("⬅️ Raw response:", text);
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${text}`);
+            throw new Error(`GitHub Error ${response.status}: ${text}`);
         }
 
         return JSON.parse(text);
 
-    } catch (error) {
-        console.error("❌ FETCH FAILED:", error);
-        showError(error.message);
+    } catch (err) {
+        console.error(err);
+        showError(err.message);
         return [];
     }
 }
@@ -314,40 +316,38 @@ async function fetchMilestones() {
 // -------------------- FETCH ISSUES --------------------
 async function fetchIssuesForMilestone(milestoneNumber) {
     try {
-        console.log("➡️ Fetching issues for:", milestoneNumber);
-
         const response = await fetch(
             `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`,
             { headers: getHeaders() }
         );
 
-        console.log("⬅️ Issues status:", response.status);
-
         const text = await response.text();
-        console.log("⬅️ Issues raw:", text);
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${text}`);
+            throw new Error(`GitHub Error ${response.status}: ${text}`);
         }
 
         return JSON.parse(text);
 
-    } catch (error) {
-        console.error("❌ ISSUES FAILED:", error);
+    } catch (err) {
+        console.error(err);
         return [];
     }
 }
 
 // -------------------- MAIN LOAD --------------------
 async function fetchAndRender() {
-    document.getElementById('milestones').innerHTML =
-        '<div class="loading">Loading milestones...</div>';
+    const container = getEl('milestones');
+    if (container) {
+        container.innerHTML = '<div class="loading">Loading milestones...</div>';
+    }
 
     const milestones = await fetchMilestones();
 
     if (!milestones || milestones.length === 0) {
-        document.getElementById('milestones').innerHTML =
-            '<div class="empty-state">No milestones found</div>';
+        if (container) {
+            container.innerHTML = '<div class="empty-state">No milestones found</div>';
+        }
         return;
     }
 
@@ -366,15 +366,16 @@ async function fetchAndRender() {
 
 // -------------------- TEAM MEMBERS --------------------
 function renderTeamMembers(milestones) {
+    const container = getEl('teamMembers');
+    if (!container) return;
+
     const uniqueMembers = [...new Set(milestones.map(m => m.title))];
 
     let html = '';
 
     uniqueMembers.forEach(member => {
-        const memberMilestones = milestones.filter(m => m.title === member);
-
-        let totalIssues = 0;
-        memberMilestones.forEach(m => totalIssues += m.issues.length);
+        const count = milestones.filter(m => m.title === member)
+            .reduce((acc, m) => acc + m.issues.length, 0);
 
         html += `
             <div class="member-item ${selectedMember === member ? 'active' : ''}"
@@ -382,12 +383,12 @@ function renderTeamMembers(milestones) {
                 <div class="member-info">
                     <span class="member-name">${member}</span>
                 </div>
-                <span class="member-badge">${totalIssues}</span>
+                <span class="member-badge">${count}</span>
             </div>
         `;
     });
 
-    document.getElementById('teamMembers').innerHTML = html;
+    container.innerHTML = html;
 }
 
 // -------------------- SELECT MEMBER --------------------
@@ -399,19 +400,12 @@ function selectMember(member) {
 
 // -------------------- DASHBOARD --------------------
 function renderDashboard(milestones) {
+    const container = getEl('milestones');
+    if (!container) return;
+
     let filtered = selectedMember
         ? milestones.filter(m => m.title === selectedMember)
         : milestones;
-
-    let total = 0;
-    filtered.forEach(m => total += m.issues.length);
-
-    document.getElementById('stats').innerHTML = `
-        <div class="stat-box">
-            <div class="stat-number">${total}</div>
-            <div class="stat-label">Total Issues</div>
-        </div>
-    `;
 
     let html = '';
 
@@ -435,11 +429,11 @@ function renderDashboard(milestones) {
         `;
     });
 
-    document.getElementById('milestones').innerHTML = html;
+    container.innerHTML = html;
 }
 
-// -------------------- INIT --------------------
-window.addEventListener('load', () => {
+// -------------------- INIT (FIXED) --------------------
+window.addEventListener('DOMContentLoaded', () => {
     fetchAndRender();
 
     setInterval(fetchAndRender, 60000);
