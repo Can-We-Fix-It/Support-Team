@@ -258,16 +258,12 @@ const STORAGE_KEY = 'supportTeamDashboard_completed';
 // 🔐 PUT YOUR NEW TOKEN HERE (classic token with repo access)
 const GITHUB_TOKEN = "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";
 
-let allMilestones = [];
+// ---------------- STATE ----------------
+let allIssues = [];
 let selectedMember = null;
 let selectedSeverityFilter = null;
 
-// -------------------- SAFE DOM ACCESS --------------------
-function getEl(id) {
-    return document.getElementById(id);
-}
-
-// -------------------- HEADERS --------------------
+// ---------------- HEADERS ----------------
 function getHeaders() {
     return {
         "Accept": "application/vnd.github.v3+json",
@@ -275,7 +271,11 @@ function getHeaders() {
     };
 }
 
-// -------------------- ERROR HANDLING (FIXED) --------------------
+// ---------------- SAFE ERROR HANDLING ----------------
+function getEl(id) {
+    return document.getElementById(id);
+}
+
 function showError(message) {
     const el = getEl('error');
     if (!el) return;
@@ -288,13 +288,13 @@ function clearError() {
     el.innerHTML = '';
 }
 
-// -------------------- FETCH MILESTONES --------------------
-async function fetchMilestones() {
+// ---------------- FETCH ISSUES ----------------
+async function fetchIssues() {
     try {
         clearError();
 
         const response = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`,
+            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100`,
             { headers: getHeaders() }
         );
 
@@ -313,70 +313,59 @@ async function fetchMilestones() {
     }
 }
 
-// -------------------- FETCH ISSUES --------------------
-async function fetchIssuesForMilestone(milestoneNumber) {
-    try {
-        const response = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`,
-            { headers: getHeaders() }
-        );
-
-        const text = await response.text();
-
-        if (!response.ok) {
-            throw new Error(`GitHub Error ${response.status}: ${text}`);
-        }
-
-        return JSON.parse(text);
-
-    } catch (err) {
-        console.error(err);
-        return [];
-    }
-}
-
-// -------------------- MAIN LOAD --------------------
+// ---------------- MAIN LOAD ----------------
 async function fetchAndRender() {
     const container = getEl('milestones');
     if (container) {
-        container.innerHTML = '<div class="loading">Loading milestones...</div>';
+        container.innerHTML = '<div class="loading">Loading issues...</div>';
     }
 
-    const milestones = await fetchMilestones();
+    const issues = await fetchIssues();
 
-    if (!milestones || milestones.length === 0) {
+    if (!issues || issues.length === 0) {
         if (container) {
-            container.innerHTML = '<div class="empty-state">No milestones found</div>';
+            container.innerHTML = '<div class="empty-state">No issues found</div>';
         }
         return;
     }
 
-    const milestonesWithIssues = await Promise.all(
-        milestones.map(async (m) => ({
-            ...m,
-            issues: await fetchIssuesForMilestone(m.number)
-        }))
-    );
+    allIssues = issues;
 
-    allMilestones = milestonesWithIssues;
-
-    renderTeamMembers(milestonesWithIssues);
-    renderDashboard(milestonesWithIssues);
+    renderIssues(issues);
+    renderStats(issues);
+    renderTeamMembers(issues);
 }
 
-// -------------------- TEAM MEMBERS --------------------
-function renderTeamMembers(milestones) {
-    const container = getEl('teamMembers');
-    if (!container) return;
+// ---------------- STATS ----------------
+function renderStats(issues) {
+    const total = issues.length;
 
-    const uniqueMembers = [...new Set(milestones.map(m => m.title))];
+    const stats = `
+        <div class="stat-box">
+            <div class="stat-number">${total}</div>
+            <div class="stat-label">Total Issues</div>
+        </div>
+    `;
+
+    const el = getEl('stats');
+    if (el) el.innerHTML = stats;
+}
+
+// ---------------- TEAM MEMBERS (ASSIGNEES) ----------------
+function renderTeamMembers(issues) {
+    const el = getEl('teamMembers');
+    if (!el) return;
+
+    const members = new Map();
+
+    issues.forEach(issue => {
+        const name = issue.assignee?.login || 'Unassigned';
+        members.set(name, (members.get(name) || 0) + 1);
+    });
 
     let html = '';
 
-    uniqueMembers.forEach(member => {
-        const count = milestones.filter(m => m.title === member)
-            .reduce((acc, m) => acc + m.issues.length, 0);
-
+    members.forEach((count, member) => {
         html += `
             <div class="member-item ${selectedMember === member ? 'active' : ''}"
                  onclick="selectMember('${member.replace(/'/g, "\\'")}')">
@@ -388,42 +377,87 @@ function renderTeamMembers(milestones) {
         `;
     });
 
-    container.innerHTML = html;
+    el.innerHTML = html;
 }
 
-// -------------------- SELECT MEMBER --------------------
+// ---------------- SELECT MEMBER ----------------
 function selectMember(member) {
     selectedMember = selectedMember === member ? null : member;
-    renderTeamMembers(allMilestones);
-    renderDashboard(allMilestones);
+    renderIssues(allIssues);
 }
 
-// -------------------- DASHBOARD --------------------
-function renderDashboard(milestones) {
+// ---------------- SEVERITY FILTER ----------------
+function getPriority(issue) {
+    if (!issue.labels) return null;
+
+    for (let label of issue.labels) {
+        if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
+            return label.name;
+        }
+    }
+    return null;
+}
+
+function toggleSeverityFilter(severity) {
+    selectedSeverityFilter =
+        selectedSeverityFilter === severity ? null : severity;
+
+    renderIssues(allIssues);
+}
+
+// ---------------- RENDER ISSUES ----------------
+function renderIssues(issues) {
     const container = getEl('milestones');
     if (!container) return;
 
-    let filtered = selectedMember
-        ? milestones.filter(m => m.title === selectedMember)
-        : milestones;
+    let filtered = issues;
+
+    // filter by member
+    if (selectedMember) {
+        filtered = filtered.filter(i =>
+            (i.assignee?.login || 'Unassigned') === selectedMember
+        );
+    }
+
+    // filter by severity
+    if (selectedSeverityFilter) {
+        filtered = filtered.filter(i =>
+            getPriority(i) === selectedSeverityFilter
+        );
+    }
 
     let html = '';
 
-    filtered.forEach(m => {
+    filtered.forEach(issue => {
+        const severity = getPriority(issue);
+        const assignee = issue.assignee?.login || 'Unassigned';
+
         html += `
             <div class="milestone-card">
                 <div class="milestone-header">
-                    <div class="milestone-title">${m.title}</div>
-                    <div class="progress-text">${m.issues.length} issues</div>
+                    <div class="milestone-title">
+                        ${issue.title}
+                    </div>
+                    <div class="progress-text">
+                        #${issue.number}
+                    </div>
                 </div>
 
                 <div class="milestone-content">
-                    ${m.issues.map(i => `
-                        <div class="issue-item">
-                            <div class="issue-title">${i.title}</div>
-                            <div class="issue-number">#${i.number}</div>
+                    <div class="issue-item">
+                        <div class="issue-title">
+                            ${issue.body ? issue.body.substring(0, 200) : 'No description'}
                         </div>
-                    `).join('')}
+
+                        <div class="issue-meta">
+                            <div class="meta-item"><b>Assignee:</b> ${assignee}</div>
+                            ${severity ? `<div class="meta-item"><b>Priority:</b> ${severity}</div>` : ''}
+                        </div>
+
+                        <a class="issue-link" href="${issue.html_url}" target="_blank">
+                            View on GitHub →
+                        </a>
+                    </div>
                 </div>
             </div>
         `;
@@ -432,10 +466,9 @@ function renderDashboard(milestones) {
     container.innerHTML = html;
 }
 
-// -------------------- INIT (FIXED) --------------------
+// ---------------- INIT ----------------
 window.addEventListener('DOMContentLoaded', () => {
     fetchAndRender();
-
     setInterval(fetchAndRender, 60000);
 });
 </script>
