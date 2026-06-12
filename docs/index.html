@@ -7,117 +7,95 @@
 
 <style>
 body {
-    margin: 0;
     font-family: Arial, sans-serif;
+    margin: 0;
     background: linear-gradient(135deg,#667eea,#764ba2);
+    min-height: 100vh;
     color: white;
 }
 
-.container {
-    max-width: 1200px;
-    margin: auto;
-    padding: 20px;
-}
+.container { max-width:1200px; margin:auto; padding:20px; }
 
-header {
-    text-align: center;
-    padding: 20px;
-}
+header { text-align:center; margin-bottom:20px; }
 
 button {
-    padding: 10px 15px;
-    border: none;
-    cursor: pointer;
-    border-radius: 6px;
+    padding:10px 15px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
 }
 
-.refresh-btn {
-    background: white;
-    color: #667eea;
-    font-weight: bold;
+.refresh-btn { background:white; color:#333; }
+
+.grid {
+    display:grid;
+    grid-template-columns:250px 1fr;
+    gap:20px;
 }
 
-.stats {
-    display: flex;
-    gap: 10px;
-    margin: 20px 0;
+.panel, .card {
+    background:white;
+    color:#333;
+    border-radius:10px;
+    padding:15px;
 }
 
-.stat {
-    background: white;
-    color: black;
-    padding: 15px;
-    border-radius: 10px;
-    flex: 1;
-    text-align: center;
-}
-
-.main {
-    display: flex;
-    gap: 20px;
-}
-
-.sidebar {
-    width: 250px;
-    background: white;
-    color: black;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.member {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-}
-
-.member.active {
-    background: #667eea;
-    color: white;
-}
-
-.board {
-    flex: 1;
-}
-
-.card {
-    background: white;
-    color: black;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 10px;
+.issue {
+    padding:10px;
+    margin:10px 0;
+    background:#f3f3f3;
+    border-radius:8px;
 }
 
 .badge {
-    padding: 3px 8px;
-    border-radius: 5px;
-    font-size: 12px;
-    color: white;
+    padding:3px 8px;
+    border-radius:12px;
+    font-size:12px;
+    color:white;
 }
 
-.low { background: green; }
-.medium { background: orange; }
-.high { background: red; }
-.urgent { background: darkred; }
+.low { background:green; }
+.medium { background:orange; }
+.high { background:red; }
+.urgent { background:darkred; }
+
+.agent {
+    display:flex;
+    justify-content:space-between;
+    padding:10px;
+    cursor:pointer;
+    border-bottom:1px solid #eee;
+}
+
+.agent:hover { background:#f0f0f0; }
+.active { background:#667eea; color:white; }
+
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
 <header>
-    <h1>Support Dashboard</h1>
-    <button class="refresh-btn" onclick="loadData()">Refresh</button>
+<h1>Support Dashboard</h1>
+<button class="refresh-btn" onclick="load()">Refresh</button>
 </header>
 
-<div class="stats" id="stats"></div>
+<div class="grid">
 
-<div class="main">
-    <div class="sidebar" id="members"></div>
-    <div class="board" id="issues"></div>
+<!-- LEFT -->
+<div class="panel">
+<h3>Agents</h3>
+<div id="agents"></div>
 </div>
 
+<!-- RIGHT -->
+<div class="panel">
+<h3>Issues</h3>
+<div id="issues"></div>
+</div>
+
+</div>
 </div>
 
 <script>
@@ -125,110 +103,47 @@ const OWNER = "Can-We-Fix-It";
 const REPO = "Support-Team";
 
 let allIssues = [];
-let selectedUser = null;
+let selectedAgent = null;
 
-/* ---------------- FETCH ---------------- */
+/* -------------------------
+   GET PRIORITY (FIXED)
+--------------------------*/
+function getPriority(issue) {
+    if (!issue.body) return "low";
 
-async function fetchIssues() {
+    const match = issue.body.match(/Priority:\s*(low|medium|high|urgent)/i);
+    return match ? match[1].toLowerCase() : "low";
+}
+
+/* -------------------------
+   GET AGENT (LABEL)
+--------------------------*/
+function getAgent(issue) {
+    if (!issue.labels) return "Unassigned";
+    const agent = issue.labels.find(l => l.name !== "bug" && l.name !== "enhancement");
+    return agent ? agent.name : "Unassigned";
+}
+
+/* -------------------------
+   FETCH ISSUES
+--------------------------*/
+async function load() {
     const res = await fetch(
         `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
     );
-    return await res.json();
-}
 
-/* ---------------- PRIORITY FIX (IMPORTANT) ---------------- */
-
-function getPriority(issue) {
-
-    // ✅ NEW: ISSUE FIELDS (correct way)
-    if (issue.fields?.Priority) return issue.fields.Priority;
-
-    // fallback if API returns singleSelect format
-    if (issue.fieldValues) {
-        const p = issue.fieldValues.find(f =>
-            f.field?.name?.toLowerCase() === "priority"
-        );
-        if (p?.value) return p.value;
-    }
-
-    // fallback labels
-    if (issue.labels) {
-        for (let l of issue.labels) {
-            const n = l.name.toLowerCase();
-            if (["low","medium","high","urgent"].includes(n)) {
-                return n;
-            }
-        }
-    }
-
-    return "low";
-}
-
-/* ---------------- RENDER ---------------- */
-
-function render() {
-
-    const filtered = selectedUser
-        ? allIssues.filter(i =>
-            i.assignee?.login === selectedUser ||
-            i.user?.login === selectedUser
-          )
-        : allIssues;
-
-    document.getElementById("stats").innerHTML = `
-        <div class="stat">Total<br>${filtered.length}</div>
-        <div class="stat">Open<br>${filtered.filter(i => !i.closed_at).length}</div>
-        <div class="stat">Closed<br>${filtered.filter(i => i.closed_at).length}</div>
-    `;
-
-    const users = [...new Set(allIssues.map(i =>
-        i.assignee?.login || i.user?.login
-    ))];
-
-    document.getElementById("members").innerHTML = users.map(u => `
-        <div class="member ${selectedUser===u?'active':''}" onclick="selectUser('${u}')">
-            ${u}
-        </div>
-    `).join("");
-
-    document.getElementById("issues").innerHTML = filtered.map(i => {
-
-        const priority = getPriority(i);
-
-        return `
-        <div class="card">
-            <b>${i.title}</b><br>
-            <small>${i.body ? i.body.slice(0,120) : ""}</small>
-            <br><br>
-
-            <span class="badge ${priority}">${priority.toUpperCase()}</span>
-            <br><br>
-
-            <a href="${i.html_url}" target="_blank">View</a>
-        </div>
-        `;
-    }).join("");
-
-}
-
-/* ---------------- ACTIONS ---------------- */
-
-function selectUser(user) {
-    selectedUser = selectedUser === user ? null : user;
+    allIssues = await res.json();
     render();
 }
 
-async function loadData() {
-    allIssues = await fetchIssues();
-    render();
-}
+/* -------------------------
+   RENDER AGENTS
+--------------------------*/
+function renderAgents() {
+    const container = document.getElementById("agents");
+    const agents = {};
 
-/* ---------------- INIT ---------------- */
-
-loadData();
-
-// ❌ NO AUTO REFRESH (you asked for this earlier)
-</script>
-
-</body>
-</html>
+    allIssues.forEach(i => {
+        const a = getAgent(i);
+        agents[a] = (agents[a] || 0) + 1;
+    });
