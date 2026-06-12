@@ -258,233 +258,130 @@ const STORAGE_KEY = 'supportTeamDashboard_completed';
 // 🔐 PUT YOUR NEW TOKEN HERE (classic token with repo access)
 const GITHUB_TOKEN = "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";
 
-// ---------------- STATE ----------------
+const STORAGE_KEY = "supportTeamDashboard_completed";
+
 let allIssues = [];
 let selectedMember = null;
 let selectedSeverityFilter = null;
 
-// ---------------- HEADERS ----------------
 function getHeaders() {
     return {
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github+json",
+        "Authorization": `Bearer ${GITHUB_TOKEN}`
     };
 }
-    
-// ---------------- SAFE ERROR HANDLING ----------------
-function getEl(id) {
-    return document.getElementById(id);
+
+// -------------------- FETCH ISSUES --------------------
+async function fetchIssues() {
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100`;
+
+    const res = await fetch(url, { headers: getHeaders() });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`GitHub Error ${res.status}: ${text}`);
+    }
+
+    return await res.json();
 }
 
-function showError(message) {
-    const el = getEl('error');
-    if (!el) return;
-    el.innerHTML = `<div class="error">⚠️ ${message}</div>`;
-}
-
-function clearError() {
-    const el = getEl('error');
-    if (!el) return;
-    el.innerHTML = '';
-}
-
-// ---------------- FETCH ISSUES ----------------
-async function test() {
-    const res = await fetch("https://api.github.com/repos/Can-We-Fix-It/Support-Team/issues?state=all");
-    const data = await res.json();
-    console.log("ISSUES:", data);
-}
-
-test();
-
-// ---------------- MAIN LOAD ----------------
-async function fetchAndRender() {
-    document.getElementById('milestones').innerHTML =
-        '<div class="loading">Loading issues...</div>';
-
-    const res = await fetch(
-        "https://api.github.com/repos/Can-We-Fix-It/Support-Team/issues?state=all"
-    );
-
-    const issues = await res.json();
-
-    console.log("ISSUES:", issues);
-
-    allMilestones = [{
-        title: "All Issues",
-        issues: issues
-    }];
-
-    renderTeamMembers(allMilestones);
-    renderDashboard(allMilestones);
-}
-
-// ---------------- STATS ----------------
-function renderStats(issues) {
-    const total = issues.length;
-
-    const stats = `
-        <div class="stat-box">
-            <div class="stat-number">${total}</div>
-            <div class="stat-label">Total Issues</div>
-        </div>
-    `;
-
-    const el = getEl('stats');
-    if (el) el.innerHTML = stats;
-}
-
-// ---------------- TEAM MEMBERS (ASSIGNEES) ----------------
-function renderTeamMembers(issues) {
-    const el = getEl('teamMembers');
-    if (!el) return;
-
-    const agentMap = new Map();
-
-    // 🔥 Build agents dynamically from labels
-    issues.forEach(issue => {
-        const labels = issue.labels || [];
-
-        labels.forEach(label => {
-            const name = label.name;
-
-            // ignore severity labels
-            if (["Severe", "Medium", "Low"].includes(name)) return;
-
-            // treat EVERYTHING else as agent
-            if (!agentMap.has(name)) {
-                agentMap.set(name, {
-                    total: 0,
-                    severe: 0,
-                    medium: 0,
-                    low: 0
-                });
-            }
-
-            const data = agentMap.get(name);
-            data.total++;
-
-            const priority = getPriority(issue);
-            if (priority === "Severe") data.severe++;
-            if (priority === "Medium") data.medium++;
-            if (priority === "Low") data.low++;
-        });
-    });
-
-    let html = '';
-
-    agentMap.forEach((data, agent) => {
-
-        html += `
-            <div class="member-item ${selectedAgent === agent ? 'active' : ''}"
-                 onclick="selectAgent('${agent}')">
-
-                <div class="member-info">
-                    <span class="member-name">${agent}</span>
-
-                    <span class="member-severity-badge severity-severe-badge">🔴 ${data.severe}</span>
-                    <span class="member-severity-badge severity-medium-badge">🟠 ${data.medium}</span>
-                    <span class="member-severity-badge severity-low-badge">🟢 ${data.low}</span>
-                </div>
-
-                <span class="member-badge">${data.total}</span>
-            </div>
-        `;
-    });
-
-    el.innerHTML = html;
-}
-
-// ---------------- SELECT MEMBER ----------------
-function selectMember(member) {
-    selectedMember = selectedMember === member ? null : member;
-    renderIssues(allIssues);
-}
-
-// ---------------- SEVERITY FILTER ----------------
+// -------------------- PRIORITY --------------------
 function getPriority(issue) {
     if (!issue.labels) return null;
 
-    for (let label of issue.labels) {
-        if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
+    for (const label of issue.labels) {
+        if (["Severe", "Medium", "Low"].includes(label.name)) {
             return label.name;
         }
     }
     return null;
 }
 
-function toggleSeverityFilter(severity) {
-    selectedSeverityFilter =
-        selectedSeverityFilter === severity ? null : severity;
-
-    renderIssues(allIssues);
+// -------------------- DISPLAY NAME --------------------
+function getDisplayName(user) {
+    return user?.login || "Unassigned";
 }
 
-// ---------------- RENDER ISSUES ----------------
-function renderIssues(issues) {
-    const container = getEl('milestones');
-    if (!container) return;
+// -------------------- RENDER --------------------
+function render() {
+    let issues = allIssues;
 
-    let filtered = issues;
-
-    // filter by member
-    if (selectedMember) {
-        filtered = filtered.filter(i =>
-            (i.assignee?.login || 'Unassigned') === selectedMember
-        );
-    }
-
-    // filter by severity
     if (selectedSeverityFilter) {
-        filtered = filtered.filter(i =>
-            getPriority(i) === selectedSeverityFilter
-        );
+        issues = issues.filter(i => getPriority(i) === selectedSeverityFilter);
     }
 
-    let html = '';
+    if (selectedMember) {
+        issues = issues.filter(i => getDisplayName(i.assignee) === selectedMember);
+    }
 
-    filtered.forEach(issue => {
-        const severity = getPriority(issue);
-        const assignee = issue.assignee?.login || 'Unassigned';
+    // STATS
+    const total = issues.length;
+    const completed = 0;
 
-        html += `
-            <div class="milestone-card">
-                <div class="milestone-header">
-                    <div class="milestone-title">
-                        ${issue.title}
-                    </div>
-                    <div class="progress-text">
-                        #${issue.number}
-                    </div>
-                </div>
+    document.getElementById("stats").innerHTML = `
+        <div class="stat-box">
+            <div class="stat-number">${total}</div>
+            <div class="stat-label">Issues</div>
+        </div>
+    `;
 
-                <div class="milestone-content">
-                    <div class="issue-item">
-                        <div class="issue-title">
-                            ${issue.body ? issue.body.substring(0, 200) : 'No description'}
-                        </div>
+    // GROUP MEMBERS
+    const members = [...new Set(allIssues.map(i => getDisplayName(i.assignee)))];
 
-                        <div class="issue-meta">
-                            <div class="meta-item"><b>Assignee:</b> ${assignee}</div>
-                            ${severity ? `<div class="meta-item"><b>Priority:</b> ${severity}</div>` : ''}
-                        </div>
+    document.getElementById("teamMembers").innerHTML = members.map(m => `
+        <div class="member-item" onclick="selectMember('${m}')">
+            <div class="member-name">${m}</div>
+        </div>
+    `).join("");
 
-                        <a class="issue-link" href="${issue.html_url}" target="_blank">
-                            View on GitHub →
-                        </a>
-                    </div>
-                </div>
+    // ISSUES LIST
+    document.getElementById("milestones").innerHTML = issues.map(issue => `
+        <div class="milestone-card">
+            <div class="milestone-header">
+                <div class="milestone-title">${issue.title}</div>
+                <div>#${issue.number}</div>
             </div>
-        `;
-    });
+            <div class="milestone-content">
+                <p>👤 ${getDisplayName(issue.assignee)}</p>
+                <p>🏷️ ${getPriority(issue) || "No Priority"}</p>
+                <a href="${issue.html_url}" target="_blank">View on GitHub</a>
+            </div>
+        </div>
+    `).join("");
 
-    container.innerHTML = html;
 }
 
-// ---------------- INIT ----------------
-window.addEventListener('DOMContentLoaded', () => {
-    fetchAndRender();
-    setInterval(fetchAndRender, 60000);
-});
+// -------------------- FILTERS --------------------
+function selectMember(name) {
+    selectedMember = selectedMember === name ? null : name;
+    render();
+}
+
+function toggleSeverityFilter(level) {
+    selectedSeverityFilter = selectedSeverityFilter === level ? null : level;
+    render();
+}
+
+// -------------------- LOAD --------------------
+async function fetchAndRender() {
+    try {
+        document.getElementById("milestones").innerHTML = "Loading...";
+
+        allIssues = await fetchIssues();
+
+        console.log("ISSUES:", allIssues);
+
+        render();
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById("milestones").innerHTML =
+            `<div class="error">${err.message}</div>`;
+    }
+}
+
+// -------------------- START --------------------
+window.onload = fetchAndRender;
 </script>
 </body>
 </html>
