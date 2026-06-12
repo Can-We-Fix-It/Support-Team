@@ -6,94 +6,122 @@
 <title>Support Team Dashboard</title>
 
 <style>
-/* ===== YOUR ORIGINAL STYLE (unchanged) ===== */
-
-* { margin:0; padding:0; box-sizing:border-box; }
+* {
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial;
     background: linear-gradient(135deg,#667eea,#764ba2);
     min-height:100vh;
-    padding:20px;
+    padding:15px;
 }
 
-.container { max-width:1200px; margin:0 auto; }
+/* ===== CONTAINER ===== */
+.container {
+    max-width:1200px;
+    margin:0 auto;
+}
 
-header { text-align:center; color:white; margin-bottom:40px; }
+/* ===== HEADER ===== */
+header {
+    text-align:center;
+    color:white;
+    margin-bottom:25px;
+}
 
-h1 { font-size:2.5em; }
+h1 {
+    font-size:2.2em;
+}
 
-.subtitle { opacity:0.9; }
+.subtitle {
+    opacity:0.9;
+}
 
+/* ===== STATS ===== */
 .stats {
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:15px;
-    margin-bottom:40px;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-bottom:20px;
 }
 
 .stat-box {
     background:white;
-    padding:20px;
+    padding:15px;
     border-radius:10px;
     text-align:center;
 }
 
-.stat-number { font-size:2em; color:#667eea; font-weight:bold; }
-
-.main-content {
-    display:grid;
-    grid-template-columns:250px 1fr;
-    gap:25px;
+.stat-number {
+    font-size:1.8em;
+    color:#667eea;
+    font-weight:bold;
 }
 
+/* ===== LAYOUT ===== */
+.main-content {
+    display:grid;
+    grid-template-columns:260px 1fr;
+    gap:15px;
+}
+
+/* ===== TEAM LIST ===== */
 .team-members {
     background:white;
     border-radius:12px;
-    padding:10px;
+    padding:8px;
+    height:fit-content;
+    position:sticky;
+    top:10px;
 }
 
 .member-item {
-    padding:12px;
+    padding:10px;
     border-bottom:1px solid #eee;
     cursor:pointer;
     display:flex;
     justify-content:space-between;
+    font-size:0.9em;
+    transition:0.2s;
 }
 
-.member-item:hover { background:#f5f5f5; }
+.member-item:hover {
+    background:#f5f5f5;
+}
 
-.member-item.active { background:#667eea; color:white; }
+.member-item.active {
+    background:#667eea;
+    color:white;
+}
 
+/* ===== ISSUE CARD ===== */
 .milestone-card {
     background:white;
     border-radius:12px;
-    margin-bottom:20px;
+    margin-bottom:15px;
     overflow:hidden;
 }
 
 .milestone-header {
-    padding:15px;
+    padding:12px;
     color:white;
     background: linear-gradient(135deg,#667eea,#764ba2);
 }
 
-.issue-item {
-    padding:10px;
-    border-bottom:1px solid #eee;
+.milestone-header div:first-child {
+    font-weight:600;
+    word-break:break-word;
 }
 
-.meta {
-    font-size:0.85em;
-    color:#666;
-    margin-top:5px;
-}
-
+/* ===== BADGES ===== */
 .badge {
     padding:3px 8px;
     border-radius:12px;
     font-size:0.7em;
-    margin-left:5px;
+    margin-right:5px;
 }
 
 .priority-low { background:#44aa44; color:white; }
@@ -101,18 +129,71 @@ h1 { font-size:2.5em; }
 .priority-severe { background:#ff4444; color:white; }
 
 .agent-tag {
-    background:#222;
+    background:#111;
     color:white;
-    padding:2px 6px;
-    border-radius:10px;
+    padding:3px 8px;
+    border-radius:12px;
     font-size:0.7em;
-    margin-left:5px;
 }
 
+/* ===== ISSUE BODY ===== */
+.issue-item {
+    padding:12px;
+}
+
+.meta {
+    font-size:0.85em;
+    color:#666;
+}
+
+/* ===== LINK ===== */
+a {
+    color:#667eea;
+    text-decoration:none;
+}
+
+a:hover {
+    text-decoration:underline;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 900px) {
+
+    .main-content {
+        grid-template-columns:1fr;
+    }
+
+    .team-members {
+        position:relative;
+        display:flex;
+        overflow-x:auto;
+        white-space:nowrap;
+        gap:8px;
+        padding:10px;
+    }
+
+    .member-item {
+        min-width:140px;
+        border-bottom:none;
+        border-right:1px solid #eee;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:5px;
+    }
+
+    h1 {
+        font-size:1.6em;
+    }
+
+    .stats {
+        grid-template-columns:repeat(2,1fr);
+    }
+}
 </style>
 </head>
 
 <body>
+
 <div class="container">
 
 <header>
@@ -123,11 +204,8 @@ h1 { font-size:2.5em; }
 <div class="stats" id="stats"></div>
 
 <div class="main-content">
-
-<div class="team-members" id="teamMembers"></div>
-
-<div id="milestones"></div>
-
+    <div class="team-members" id="teamMembers"></div>
+    <div id="milestones"></div>
 </div>
 
 </div>
@@ -140,9 +218,7 @@ const REPO = "Support-Team";
 let allData = [];
 let selectedAgent = null;
 
-/* =========================
-   PRIORITY (LABELS ONLY)
-========================= */
+/* PRIORITY */
 function getPriority(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
 
@@ -153,41 +229,34 @@ function getPriority(issue) {
     return "Low";
 }
 
-/* =========================
-   AGENT = ANY NON-PRIORITY LABEL
-========================= */
+/* AGENT */
 function getAgent(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
+    const priorityLabels = ["Severe","Medium","Low"];
 
-    const priorityLabels = ["Severe", "Medium", "Low"];
-
-    const agent = labels.find(l => !priorityLabels.includes(l));
-
-    return agent || "Unassigned";
+    return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* =========================
-   FETCH MILESTONES
-========================= */
+/* FETCH */
 async function fetchData() {
-    const res = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
-    );
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
+        );
 
-    const issues = await res.json();
+        const issues = await res.json();
 
-    if (!Array.isArray(issues)) {
-        console.log("ERROR:", issues);
-        return;
+        if (!Array.isArray(issues)) return;
+
+        allData = issues;
+        render();
+
+    } catch (err) {
+        console.log("Error:", err);
     }
-
-    allData = issues;
-    render();
 }
 
-/* =========================
-   GROUP BY AGENT
-========================= */
+/* GROUP */
 function groupByAgent(data) {
     const map = {};
 
@@ -200,25 +269,20 @@ function groupByAgent(data) {
     return map;
 }
 
-/* =========================
-   RENDER
-========================= */
+/* RENDER */
 function render() {
 
     const grouped = groupByAgent(allData);
 
     /* STATS */
-    let total = allData.length;
-    let stats = `
+    document.getElementById("stats").innerHTML = `
         <div class="stat-box">
-            <div class="stat-number">${total}</div>
+            <div class="stat-number">${allData.length}</div>
             <div>Total Issues</div>
         </div>
     `;
 
-    document.getElementById("stats").innerHTML = stats;
-
-    /* TEAM LIST */
+    /* TEAM */
     let teamHTML = "";
 
     Object.keys(grouped).forEach(agent => {
@@ -249,18 +313,11 @@ function render() {
         html += `
         <div class="milestone-card">
             <div class="milestone-header">
-                <div>
-                    #${issue.number} ${issue.title}
-                </div>
+                <div>#${issue.number} ${issue.title}</div>
 
                 <div style="margin-top:8px;">
-                    <span class="badge priority-${priority.toLowerCase()}">
-                        ${priority}
-                    </span>
-
-                    <span class="agent-tag">
-                        ${agent}
-                    </span>
+                    <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
+                    <span class="agent-tag">${agent}</span>
                 </div>
             </div>
 
@@ -276,9 +333,7 @@ function render() {
     document.getElementById("milestones").innerHTML = html;
 }
 
-/* =========================
-   FILTER
-========================= */
+/* SELECT */
 function selectAgent(agent) {
     selectedAgent = selectedAgent === agent ? null : agent;
     render();
