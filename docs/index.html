@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Team - Issue Tracking Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .milestones {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .milestone-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .milestone-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .milestone-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+
+        .milestone-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            background: #4ade80;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .milestone-content {
+            padding: 20px;
+        }
+
+        .issue-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .issue-item:hover {
+            background: #e9ecef;
+        }
+
+        .issue-item.completed {
+            opacity: 0.6;
+        }
+
+        .issue-item.completed .issue-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: #667eea;
+            flex-shrink: 0;
+        }
+
+        .issue-info {
+            flex: 1;
+        }
+
+        .issue-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .issue-number {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .issue-link {
+            color: #667eea;
+            text-decoration: none;
+            margin-left: 8px;
+            font-size: 0.85em;
+        }
+
+        .issue-link:hover {
+            text-decoration: underline;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+
+        .update-time {
+            font-size: 0.9em;
+            color: white;
+            opacity: 0.7;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .milestones {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Support Team Dashboard</h1>
+            <p class="subtitle">Track issues and milestones in real-time</p>
+        </header>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="milestones" id="milestones"></div>
+
+        <div class="update-time">
+            Last updated: <span id="updateTime">Just now</span>
+        </div>
+
+        <div class="footer">
+            <p>💡 Check off issues as they're completed • Data syncs with GitHub</p>
+        </div>
+    </div>
+
+    <script>
+        // Sample data - this can be connected to GitHub API later
+        const data = {
+            milestones: [
+                {
+                    name: 'Joel',
+                    color: '#FF6B6B',
+                    issues: [
+                        { id: 1, title: 'test?', number: 1, url: 'https://github.com/Can-We-Fix-It/Support-Team/issues/1', completed: false }
+                    ]
+                },
+                {
+                    name: 'Bright',
+                    color: '#4ECDC4',
+                    issues: [
+                        { id: 2, title: '04/06/2026 - Sent Walkthrough 1 link instead of Post Live link (3rd occurrence)', number: 2, url: 'https://github.com/Can-We-Fix-It/Support-Team/issues/2', completed: false }
+                    ]
+                }
+            ]
+        };
+
+        const STORAGE_KEY = 'supportTeamDashboard_completed';
+
+        function loadCompletedIssues() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveCompletedIssues(completed) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
+        }
+
+        function renderDashboard() {
+            const completed = loadCompletedIssues();
+            let totalIssues = 0;
+            let completedCount = 0;
+
+            // Calculate stats
+            data.milestones.forEach(milestone => {
+                milestone.issues.forEach(issue => {
+                    totalIssues++;
+                    if (completed.includes(issue.id)) {
+                        completedCount++;
+                    }
+                });
+            });
+
+            // Render stats
+            const statsHtml = `
+                <div class="stat-box">
+                    <div class="stat-number">${totalIssues}</div>
+                    <div class="stat-label">Total Issues</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">${completedCount}</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">${totalIssues > 0 ? Math.round((completedCount / totalIssues) * 100) : 0}%</div>
+                    <div class="stat-label">Progress</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+
+            // Render milestones
+            let milestonesHtml = '';
+            data.milestones.forEach(milestone => {
+                const milestoneCompleted = milestone.issues.filter(issue => completed.includes(issue.id)).length;
+                const progress = milestone.issues.length > 0 ? (milestoneCompleted / milestone.issues.length) * 100 : 0;
+
+                let issuesHtml = '';
+                milestone.issues.forEach(issue => {
+                    const isCompleted = completed.includes(issue.id);
+                    issuesHtml += `
+                        <div class="issue-item ${isCompleted ? 'completed' : ''}">
+                            <input type="checkbox" class="checkbox" data-id="${issue.id}" ${isCompleted ? 'checked' : ''} onchange="toggleIssue(${issue.id})">
+                            <div class="issue-info">
+                                <div class="issue-title">${issue.title}</div>
+                                <div class="issue-number">Issue #${issue.number} <a href="${issue.url}" class="issue-link" target="_blank">View on GitHub →</a></div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                milestonesHtml += `
+                    <div class="milestone-card">
+                        <div class="milestone-header" style="background: linear-gradient(135deg, ${milestone.color} 0%, ${adjustColor(milestone.color, -20)} 100%);">
+                            <div class="milestone-title">${milestone.name}</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                            <div class="progress-text">${milestoneCompleted} of ${milestone.issues.length} completed</div>
+                        </div>
+                        <div class="milestone-content">
+                            ${issuesHtml || '<div class="empty-state">No issues yet</div>'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('milestones').innerHTML = milestonesHtml;
+            updateTime();
+        }
+
+        function toggleIssue(id) {
+            const completed = loadCompletedIssues();
+            const index = completed.indexOf(id);
+            if (index > -1) {
+                completed.splice(index, 1);
+            } else {
+                completed.push(id);
+            }
+            saveCompletedIssues(completed);
+            renderDashboard();
+        }
+
+        function adjustColor(color, percent) {
+            // Simple color adjustment for gradient
+            return color;
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('updateTime').textContent = timeString;
+        }
+
+        // Initial render
+        renderDashboard();
+    </script>
+</body>
+</html>
