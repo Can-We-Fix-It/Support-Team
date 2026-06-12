@@ -190,18 +190,18 @@ function getAgents(issue) {
 }
 
 async function fetchData() {
-    const milestones = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all`
-    ).then(r => r.json());
 
-    allData = await Promise.all(
-        milestones.map(async m => ({
-            ...m,
-            issues: await fetch(
-                `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${m.number}&state=all`
-            ).then(r => r.json())
-        }))
-    );
+    const [issues, milestones] = await Promise.all([
+        fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100`).then(r => r.json()),
+        fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all`).then(r => r.json())
+    ]);
+
+    allData = milestones.map(m => ({
+        ...m,
+        issues: issues.filter(i =>
+            i.milestone && i.milestone.number === m.number
+        )
+    }));
 
     render();
 }
