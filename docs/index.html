@@ -68,11 +68,76 @@
             margin-top: 5px;
         }
 
-        .milestones {
+        .main-content {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 250px 1fr;
             gap: 25px;
             margin-bottom: 40px;
+        }
+
+        .team-members {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .team-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .member-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .member-item:last-child {
+            border-bottom: none;
+        }
+
+        .member-item:hover {
+            background: #f5f5f5;
+        }
+
+        .member-item.active {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .member-badge {
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+        }
+
+        .member-item.active .member-badge {
+            background: white;
+            color: #667eea;
+        }
+
+        .milestones {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
         }
 
         .milestone-card {
@@ -94,10 +159,67 @@
             padding: 20px;
         }
 
+        .milestone-title-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
         .milestone-title {
             font-size: 1.5em;
-            margin-bottom: 10px;
             font-weight: bold;
+        }
+
+        .severity-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .severity-severe {
+            background: #ff4444 !important;
+            color: white;
+        }
+
+        .severity-medium {
+            background: #ffaa00 !important;
+            color: white;
+        }
+
+        .severity-low {
+            background: #44aa44 !important;
+            color: white;
+        }
+
+        .severity-selector {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .severity-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .severity-btn:hover {
+            opacity: 0.8;
+        }
+
+        .severity-btn.selected {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
         }
 
         .progress-bar {
@@ -241,7 +363,16 @@
             transform: scale(1.05);
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .team-members {
+                position: relative;
+                top: auto;
+            }
+
             h1 {
                 font-size: 1.8em;
             }
@@ -260,20 +391,24 @@
     <div class="container">
         <header>
             <h1>🎯 Support Team Dashboard</h1>
-            <p class="subtitle">Track issues and milestones in real-time</p>
+            <p class="subtitle">Track issues by team member and severity</p>
             <button class="refresh-btn" onclick="fetchAndRender()">🔄 Refresh Data</button>
         </header>
 
         <div id="error"></div>
         <div class="stats" id="stats"></div>
-        <div class="milestones" id="milestones"></div>
+
+        <div class="main-content">
+            <div class="team-members" id="teamMembers"></div>
+            <div class="milestones" id="milestones"></div>
+        </div>
 
         <div class="update-time">
             Last updated: <span id="updateTime">Loading...</span>
         </div>
 
         <div class="footer">
-            <p>💡 Data pulled from GitHub API • Auto-refreshes every 60 seconds</p>
+            <p>💡 Click team members to filter • Set severity levels for each person • Data syncs with GitHub</p>
         </div>
     </div>
 
@@ -281,12 +416,14 @@
         const REPO_OWNER = 'Can-We-Fix-It';
         const REPO_NAME = 'Support-Team';
         const STORAGE_KEY = 'supportTeamDashboard_completed';
+        const SEVERITY_STORAGE_KEY = 'supportTeamDashboard_severity';
         const COLORS = [
             '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
             '#DFE6E9', '#A29BFE', '#FD79A8', '#FDCB6E', '#6C5CE7'
         ];
 
-        let autoRefreshInterval;
+        let allMilestones = [];
+        let selectedMember = null;
 
         function loadCompletedIssues() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -295,6 +432,27 @@
 
         function saveCompletedIssues(completed) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
+        }
+
+        function loadSeverities() {
+            const stored = localStorage.getItem(SEVERITY_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        function saveSeverities(severities) {
+            localStorage.setItem(SEVERITY_STORAGE_KEY, JSON.stringify(severities));
+        }
+
+        function getSeverity(milestoneName) {
+            const severities = loadSeverities();
+            return severities[milestoneName] || null;
+        }
+
+        function setSeverity(milestoneName, severity) {
+            const severities = loadSeverities();
+            severities[milestoneName] = severity;
+            saveSeverities(severities);
+            fetchAndRender();
         }
 
         function showError(message) {
@@ -357,16 +515,50 @@
                 }))
             );
 
+            allMilestones = milestonesWithIssues;
+            renderTeamMembers(milestonesWithIssues);
             renderDashboard(milestonesWithIssues);
         }
 
+        function renderTeamMembers(milestones) {
+            const uniqueMembers = [...new Set(milestones.map(m => m.title))];
+            
+            let membersHtml = '<div class="team-header">👥 Team Members</div>';
+            
+            uniqueMembers.forEach((member, index) => {
+                const memberMilestones = milestones.filter(m => m.title === member);
+                const totalIssues = memberMilestones.reduce((sum, m) => sum + m.issues.length, 0);
+                const isActive = selectedMember === member ? 'active' : '';
+                
+                membersHtml += `
+                    <div class="member-item ${isActive}" onclick="selectMember('${escapeHtml(member)}')">
+                        <span>${escapeHtml(member)}</span>
+                        <span class="member-badge">${totalIssues}</span>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('teamMembers').innerHTML = membersHtml;
+        }
+
+        function selectMember(memberName) {
+            selectedMember = selectedMember === memberName ? null : memberName;
+            renderTeamMembers(allMilestones);
+            renderDashboard(allMilestones);
+        }
+
         function renderDashboard(milestones) {
+            // Filter by selected member if any
+            const filteredMilestones = selectedMember 
+                ? milestones.filter(m => m.title === selectedMember)
+                : milestones;
+
             const completed = loadCompletedIssues();
             let totalIssues = 0;
             let completedCount = 0;
 
             // Calculate stats
-            milestones.forEach(milestone => {
+            filteredMilestones.forEach(milestone => {
                 milestone.issues.forEach(issue => {
                     totalIssues++;
                     if (completed.includes(issue.id)) {
@@ -379,7 +571,7 @@
             const statsHtml = `
                 <div class="stat-box">
                     <div class="stat-number">${totalIssues}</div>
-                    <div class="stat-label">Total Issues</div>
+                    <div class="stat-label">Total Issues ${selectedMember ? `(${selectedMember})` : ''}</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-number">${completedCount}</div>
@@ -394,10 +586,11 @@
 
             // Render milestones
             let milestonesHtml = '';
-            milestones.forEach((milestone, index) => {
+            filteredMilestones.forEach((milestone, index) => {
                 const milestoneCompleted = milestone.issues.filter(issue => completed.includes(issue.id)).length;
                 const progress = milestone.issues.length > 0 ? (milestoneCompleted / milestone.issues.length) * 100 : 0;
                 const color = COLORS[index % COLORS.length];
+                const severity = getSeverity(milestone.title);
 
                 let issuesHtml = '';
                 milestone.issues.forEach(issue => {
@@ -416,8 +609,16 @@
                 milestonesHtml += `
                     <div class="milestone-card">
                         <div class="milestone-header" style="background: linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -30)} 100%);">
-                            <div class="milestone-title">${escapeHtml(milestone.title)}</div>
-                            <div class="progress-bar">
+                            <div class="milestone-title-section">
+                                <div class="milestone-title">${escapeHtml(milestone.title)}</div>
+                                ${severity ? `<span class="severity-badge severity-${severity}">${severity.toUpperCase()}</span>` : ''}
+                            </div>
+                            <div class="severity-selector">
+                                <button class="severity-btn ${severity === 'severe' ? 'selected' : ''}" style="background: #ff4444;" onclick="setSeverity('${escapeHtml(milestone.title)}', 'severe')">🔴 Severe</button>
+                                <button class="severity-btn ${severity === 'medium' ? 'selected' : ''}" style="background: #ffaa00;" onclick="setSeverity('${escapeHtml(milestone.title)}', 'medium')">🟠 Medium</button>
+                                <button class="severity-btn ${severity === 'low' ? 'selected' : ''}" style="background: #44aa44;" onclick="setSeverity('${escapeHtml(milestone.title)}', 'low')">🟢 Low</button>
+                            </div>
+                            <div class="progress-bar" style="margin-top: 12px;">
                                 <div class="progress-fill" style="width: ${progress}%"></div>
                             </div>
                             <div class="progress-text">${milestoneCompleted} of ${milestone.issues.length} completed</div>
@@ -429,7 +630,7 @@
                 `;
             });
 
-            document.getElementById('milestones').innerHTML = milestonesHtml;
+            document.getElementById('milestones').innerHTML = milestonesHtml || '<div class="empty-state">No milestones found for this team member</div>';
             updateTime();
         }
 
@@ -443,8 +644,8 @@
             }
             saveCompletedIssues(completed);
             
-            // Re-fetch to keep UI in sync
-            fetchAndRender();
+            // Re-render to keep UI in sync
+            renderDashboard(allMilestones);
         }
 
         function adjustColor(color, percent) {
@@ -475,22 +676,13 @@
             document.getElementById('updateTime').textContent = timeString;
         }
 
-        function startAutoRefresh() {
-            // Fetch immediately
+        // Start on page load
+        window.addEventListener('load', () => {
             fetchAndRender();
-            
-            // Then auto-refresh every 60 seconds
-            autoRefreshInterval = setInterval(() => {
+            // Auto-refresh every 60 seconds
+            setInterval(() => {
                 fetchAndRender();
             }, 60000);
-        }
-
-        // Start on page load
-        window.addEventListener('load', startAutoRefresh);
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
         });
     </script>
 </body>
