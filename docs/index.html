@@ -289,36 +289,6 @@
             color: white;
         }
 
-        .severity-display {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        .severity-display-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 6px;
-            cursor: default;
-            font-weight: bold;
-            font-size: 0.8em;
-            opacity: 0.5;
-            color: white;
-        }
-
-        .severity-display-btn.severe {
-            background: #ff4444;
-        }
-
-        .severity-display-btn.medium {
-            background: #ffaa00;
-        }
-
-        .severity-display-btn.low {
-            background: #44aa44;
-        }
-
         .progress-bar {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 10px;
@@ -359,25 +329,6 @@
 
         .issue-item:hover {
             background: #e9ecef;
-        }
-
-        .issue-item.completed {
-            opacity: 0.6;
-        }
-
-        .issue-item.completed .issue-title {
-            text-decoration: line-through;
-            color: #999;
-        }
-
-        .checkbox {
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            margin-top: 2px;
-            cursor: pointer;
-            accent-color: #667eea;
-            flex-shrink: 0;
         }
 
         .issue-info {
@@ -502,10 +453,10 @@
                 <div class="team-header">👥 Team Members</div>
                 <div id="teamMembers"></div>
                 <div class="severity-filter">
-                    <button class="filter-btn severe" onclick="toggleSeverityFilter('severe')">🔴 Severe</button>
-                    <button class="filter-btn medium" onclick="toggleSeverityFilter('medium')">🟠 Medium</button>
-                    <button class="filter-btn low" onclick="toggleSeverityFilter('low')">🟢 Low</button>
-                    <div class="filter-label">Filter by severity</div>
+                    <button class="filter-btn severe" onclick="toggleSeverityFilter('Severe')">🔴 Severe</button>
+                    <button class="filter-btn medium" onclick="toggleSeverityFilter('Medium')">🟠 Medium</button>
+                    <button class="filter-btn low" onclick="toggleSeverityFilter('Low')">🟢 Low</button>
+                    <div class="filter-label">Filter by priority</div>
                 </div>
             </div>
             <div class="milestones" id="milestones"></div>
@@ -516,7 +467,7 @@
         </div>
 
         <div class="footer">
-            <p>💡 Click team members to filter • Use severity buttons to filter by priority • Priorities set on GitHub</p>
+            <p>💡 Click team members to filter • Use priority buttons to filter • Priorities set on GitHub</p>
         </div>
     </div>
 
@@ -524,7 +475,6 @@
         const REPO_OWNER = 'Can-We-Fix-It';
         const REPO_NAME = 'Support-Team';
         const STORAGE_KEY = 'supportTeamDashboard_completed';
-        const SEVERITY_STORAGE_KEY = 'supportTeamDashboard_severity';
         const COLORS = [
             '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
             '#DFE6E9', '#A29BFE', '#FD79A8', '#FDCB6E', '#6C5CE7'
@@ -543,18 +493,28 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
         }
 
-        function loadSeverities() {
-            const stored = localStorage.getItem(SEVERITY_STORAGE_KEY);
-            return stored ? JSON.parse(stored) : {};
+        function getPriorityFromIssue(issue) {
+            // Check if issue has a Priority label (Severe, Medium, Low)
+            if (issue.labels && Array.isArray(issue.labels)) {
+                for (let label of issue.labels) {
+                    if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
+                        return label.name;
+                    }
+                }
+            }
+            return null;
         }
 
-        function saveSeverities(severities) {
-            localStorage.setItem(SEVERITY_STORAGE_KEY, JSON.stringify(severities));
-        }
+        function getMilestoneHighestPriority(milestone) {
+            // Get the highest priority from all issues in the milestone
+            const priorities = milestone.issues
+                .map(issue => getPriorityFromIssue(issue))
+                .filter(p => p !== null);
 
-        function getSeverity(milestoneName) {
-            const severities = loadSeverities();
-            return severities[milestoneName] || null;
+            if (priorities.includes('Severe')) return 'Severe';
+            if (priorities.includes('Medium')) return 'Medium';
+            if (priorities.includes('Low')) return 'Low';
+            return null;
         }
 
         function toggleSeverityFilter(severity) {
@@ -630,21 +590,24 @@
 
         function renderTeamMembers(milestones) {
             const uniqueMembers = [...new Set(milestones.map(m => m.title))];
-            const severities = loadSeverities();
             
             let membersHtml = '';
             
-            uniqueMembers.forEach((member, index) => {
+            uniqueMembers.forEach((member) => {
                 const memberMilestones = milestones.filter(m => m.title === member);
-                const severity = getSeverity(member);
+                const memberHighestPriority = memberMilestones
+                    .map(m => getMilestoneHighestPriority(m))
+                    .find(p => p !== null) || null;
                 
                 // Count issues - filter by severity filter if active
                 let totalIssues = 0;
                 memberMilestones.forEach(m => {
                     if (selectedSeverityFilter) {
-                        if (severities[m.title] === selectedSeverityFilter) {
-                            totalIssues += m.issues.length;
-                        }
+                        const issuesWithFilter = m.issues.filter(issue => {
+                            const priority = getPriorityFromIssue(issue);
+                            return priority === selectedSeverityFilter;
+                        });
+                        totalIssues += issuesWithFilter.length;
                     } else {
                         totalIssues += m.issues.length;
                     }
@@ -653,8 +616,9 @@
                 const isActive = selectedMember === member ? 'active' : '';
                 
                 let severityBadgeHtml = '';
-                if (severity) {
-                    severityBadgeHtml = `<span class="member-severity-badge severity-${severity}-badge">${severity.toUpperCase()}</span>`;
+                if (memberHighestPriority) {
+                    const severityClass = memberHighestPriority.toLowerCase();
+                    severityBadgeHtml = `<span class="member-severity-badge severity-${severityClass}-badge">${memberHighestPriority.toUpperCase()}</span>`;
                 }
                 
                 membersHtml += `
@@ -672,7 +636,8 @@
             
             // Update filter button states
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                const severity = btn.classList[1];
+                const severity = btn.textContent.includes('Severe') ? 'Severe' : 
+                               btn.textContent.includes('Medium') ? 'Medium' : 'Low';
                 if (selectedSeverityFilter === severity) {
                     btn.classList.add('active');
                 } else {
@@ -694,9 +659,10 @@
                 : milestones;
 
             // Filter by selected severity if any
-            const severities = loadSeverities();
             if (selectedSeverityFilter) {
-                filteredMilestones = filteredMilestones.filter(m => severities[m.title] === selectedSeverityFilter);
+                filteredMilestones = filteredMilestones.filter(m => {
+                    return m.issues.some(issue => getPriorityFromIssue(issue) === selectedSeverityFilter);
+                });
             }
 
             const completed = loadCompletedIssues();
@@ -706,9 +672,12 @@
             // Calculate stats
             filteredMilestones.forEach(milestone => {
                 milestone.issues.forEach(issue => {
-                    totalIssues++;
-                    if (completed.includes(issue.id)) {
-                        completedCount++;
+                    // Only count if no severity filter or if issue matches the filter
+                    if (!selectedSeverityFilter || getPriorityFromIssue(issue) === selectedSeverityFilter) {
+                        totalIssues++;
+                        if (completed.includes(issue.id)) {
+                            completedCount++;
+                        }
                     }
                 });
             });
@@ -741,18 +710,27 @@
 
             // Render milestones
             let milestonesHtml = '';
-            filteredMilestones.forEach((milestone, index) => {
-                const severity = severities[milestone.title];
-                const milestoneCompleted = milestone.issues.filter(issue => completed.includes(issue.id)).length;
-                const progress = milestone.issues.length > 0 ? (milestoneCompleted / milestone.issues.length) * 100 : 0;
-                const color = COLORS[index % COLORS.length];
+            filteredMilestones.forEach((milestone) => {
+                const priority = getMilestoneHighestPriority(milestone);
+                
+                // Filter issues by severity if filter is active
+                let displayIssues = milestone.issues;
+                if (selectedSeverityFilter) {
+                    displayIssues = milestone.issues.filter(issue => 
+                        getPriorityFromIssue(issue) === selectedSeverityFilter
+                    );
+                }
+
+                const milestoneCompleted = displayIssues.filter(issue => completed.includes(issue.id)).length;
+                const progress = displayIssues.length > 0 ? (milestoneCompleted / displayIssues.length) * 100 : 0;
+                const colorIndex = parseInt(milestone.number) % COLORS.length;
+                const color = COLORS[colorIndex];
 
                 let issuesHtml = '';
-                milestone.issues.forEach(issue => {
+                displayIssues.forEach(issue => {
                     const isCompleted = completed.includes(issue.id);
                     issuesHtml += `
-                        <div class="issue-item ${isCompleted ? 'completed' : ''}">
-                            <input type="checkbox" class="checkbox" data-id="${issue.id}" ${isCompleted ? 'checked' : ''} onchange="toggleIssue(${issue.id})">
+                        <div class="issue-item">
                             <div class="issue-info">
                                 <div class="issue-title">${escapeHtml(issue.title)}</div>
                                 <div class="issue-number">Issue #${issue.number} <a href="${issue.html_url}" class="issue-link" target="_blank">View on GitHub →</a></div>
@@ -761,24 +739,17 @@
                     `;
                 });
 
-                // Show severity display buttons (read-only, not clickable)
-                let severityDisplayHtml = '';
-                if (severity) {
-                    severityDisplayHtml = `<div class="severity-display"><span class="severity-display-btn ${severity}">${severity.toUpperCase()}</span></div>`;
-                }
-
                 milestonesHtml += `
                     <div class="milestone-card">
                         <div class="milestone-header" style="background: linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -30)} 100%);">
                             <div class="milestone-title-section">
                                 <div class="milestone-title">${escapeHtml(milestone.title)}</div>
-                                ${severity ? `<span class="severity-badge severity-${severity}">${severity.toUpperCase()}</span>` : ''}
+                                ${priority ? `<span class="severity-badge severity-${priority.toLowerCase()}">${priority.toUpperCase()}</span>` : ''}
                             </div>
-                            ${severityDisplayHtml}
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: ${progress}%"></div>
                             </div>
-                            <div class="progress-text">${milestoneCompleted} of ${milestone.issues.length} completed</div>
+                            <div class="progress-text">${displayIssues.length} issues</div>
                         </div>
                         <div class="milestone-content">
                             ${issuesHtml || '<div class="empty-state">No issues in this milestone</div>'}
@@ -789,20 +760,6 @@
 
             document.getElementById('milestones').innerHTML = milestonesHtml || '<div class="empty-state">No milestones found</div>';
             updateTime();
-        }
-
-        function toggleIssue(id) {
-            const completed = loadCompletedIssues();
-            const index = completed.indexOf(id);
-            if (index > -1) {
-                completed.splice(index, 1);
-            } else {
-                completed.push(id);
-            }
-            saveCompletedIssues(completed);
-            
-            // Re-render to keep UI in sync
-            renderDashboard(allMilestones);
         }
 
         function adjustColor(color, percent) {
