@@ -7,21 +7,21 @@
 
 <style>
 body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea, #764ba2);
     margin: 0;
-    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#667eea,#764ba2);
     color: white;
 }
 
 .container {
     max-width: 1200px;
     margin: auto;
+    padding: 20px;
 }
 
 header {
     text-align: center;
-    margin-bottom: 20px;
+    padding: 20px;
 }
 
 button {
@@ -29,7 +29,12 @@ button {
     border: none;
     cursor: pointer;
     border-radius: 6px;
-    margin-top: 10px;
+}
+
+.refresh-btn {
+    background: white;
+    color: #667eea;
+    font-weight: bold;
 }
 
 .stats {
@@ -38,7 +43,7 @@ button {
     margin: 20px 0;
 }
 
-.stat-box {
+.stat {
     background: white;
     color: black;
     padding: 15px;
@@ -57,10 +62,21 @@ button {
     background: white;
     color: black;
     border-radius: 10px;
-    padding: 10px;
+    overflow: hidden;
 }
 
-.milestones {
+.member {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.member.active {
+    background: #667eea;
+    color: white;
+}
+
+.board {
     flex: 1;
 }
 
@@ -68,9 +84,21 @@ button {
     background: white;
     color: black;
     padding: 15px;
+    margin-bottom: 15px;
     border-radius: 10px;
-    margin-bottom: 10px;
 }
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: white;
+}
+
+.low { background: green; }
+.medium { background: orange; }
+.high { background: red; }
+.urgent { background: darkred; }
 </style>
 </head>
 
@@ -80,15 +108,14 @@ button {
 
 <header>
     <h1>Support Dashboard</h1>
-    <button onclick="fetchAndRender()">🔄 Refresh</button>
+    <button class="refresh-btn" onclick="loadData()">Refresh</button>
 </header>
 
-<!-- MUST EXIST ELEMENTS (fixes your error) -->
 <div class="stats" id="stats"></div>
 
 <div class="main">
-    <div class="sidebar" id="teamMembers"></div>
-    <div class="milestones" id="milestones"></div>
+    <div class="sidebar" id="members"></div>
+    <div class="board" id="issues"></div>
 </div>
 
 </div>
@@ -97,89 +124,110 @@ button {
 const OWNER = "Can-We-Fix-It";
 const REPO = "Support-Team";
 
-let allMilestones = [];
-let selectedMember = null;
+let allIssues = [];
+let selectedUser = null;
 
 /* ---------------- FETCH ---------------- */
-async function fetchMilestones() {
-    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/milestones?state=all`);
-    return await res.json();
-}
 
-async function fetchIssues(milestone) {
-    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/issues?milestone=${milestone}&state=all`);
-    return await res.json();
-}
-
-/* ---------------- LOAD ---------------- */
-async function fetchAndRender() {
-    document.getElementById("milestones").innerHTML = "Loading...";
-
-    const milestones = await fetchMilestones();
-
-    const data = await Promise.all(
-        milestones.map(async m => {
-            const issues = await fetchIssues(m.number);
-            return { ...m, issues };
-        })
+async function fetchIssues() {
+    const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
     );
+    return await res.json();
+}
 
-    allMilestones = data;
-    render();
+/* ---------------- PRIORITY FIX (IMPORTANT) ---------------- */
+
+function getPriority(issue) {
+
+    // ✅ NEW: ISSUE FIELDS (correct way)
+    if (issue.fields?.Priority) return issue.fields.Priority;
+
+    // fallback if API returns singleSelect format
+    if (issue.fieldValues) {
+        const p = issue.fieldValues.find(f =>
+            f.field?.name?.toLowerCase() === "priority"
+        );
+        if (p?.value) return p.value;
+    }
+
+    // fallback labels
+    if (issue.labels) {
+        for (let l of issue.labels) {
+            const n = l.name.toLowerCase();
+            if (["low","medium","high","urgent"].includes(n)) {
+                return n;
+            }
+        }
+    }
+
+    return "low";
 }
 
 /* ---------------- RENDER ---------------- */
+
 function render() {
 
-    let filtered = allMilestones;
-
-    if (selectedMember) {
-        filtered = filtered.filter(m => m.title === selectedMember);
-    }
-
-    /* STATS */
-    const total = filtered.reduce((a, m) => a + m.issues.length, 0);
+    const filtered = selectedUser
+        ? allIssues.filter(i =>
+            i.assignee?.login === selectedUser ||
+            i.user?.login === selectedUser
+          )
+        : allIssues;
 
     document.getElementById("stats").innerHTML = `
-        <div class="stat-box">Total Issues: ${total}</div>
-        <div class="stat-box">Milestones: ${filtered.length}</div>
+        <div class="stat">Total<br>${filtered.length}</div>
+        <div class="stat">Open<br>${filtered.filter(i => !i.closed_at).length}</div>
+        <div class="stat">Closed<br>${filtered.filter(i => i.closed_at).length}</div>
     `;
 
-    /* TEAM */
-    const members = [...new Set(allMilestones.map(m => m.title))];
+    const users = [...new Set(allIssues.map(i =>
+        i.assignee?.login || i.user?.login
+    ))];
 
-    document.getElementById("teamMembers").innerHTML = `
-        <h3>Team</h3>
-        ${members.map(m => `
-            <div onclick="selectMember('${m}')" style="cursor:pointer;padding:5px;">
-                ${m}
-            </div>
-        `).join("")}
-    `;
-
-    /* MILESTONES */
-    document.getElementById("milestones").innerHTML = filtered.map(m => `
-        <div class="card">
-            <h3>${m.title}</h3>
-            <p>${m.issues.length} issues</p>
-
-            ${m.issues.map(i => `
-                <div>
-                    • ${i.title} (#${i.number})
-                </div>
-            `).join("")}
+    document.getElementById("members").innerHTML = users.map(u => `
+        <div class="member ${selectedUser===u?'active':''}" onclick="selectUser('${u}')">
+            ${u}
         </div>
     `).join("");
+
+    document.getElementById("issues").innerHTML = filtered.map(i => {
+
+        const priority = getPriority(i);
+
+        return `
+        <div class="card">
+            <b>${i.title}</b><br>
+            <small>${i.body ? i.body.slice(0,120) : ""}</small>
+            <br><br>
+
+            <span class="badge ${priority}">${priority.toUpperCase()}</span>
+            <br><br>
+
+            <a href="${i.html_url}" target="_blank">View</a>
+        </div>
+        `;
+    }).join("");
+
 }
 
-/* ---------------- FILTER ---------------- */
-function selectMember(name) {
-    selectedMember = selectedMember === name ? null : name;
+/* ---------------- ACTIONS ---------------- */
+
+function selectUser(user) {
+    selectedUser = selectedUser === user ? null : user;
     render();
 }
 
-/* ---------------- START ---------------- */
-window.onload = fetchAndRender;
+async function loadData() {
+    allIssues = await fetchIssues();
+    render();
+}
+
+/* ---------------- INIT ---------------- */
+
+loadData();
+
+// ❌ NO AUTO REFRESH (you asked for this earlier)
 </script>
 
 </body>
