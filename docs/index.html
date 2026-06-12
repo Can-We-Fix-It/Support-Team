@@ -319,7 +319,7 @@
 
         .issue-item {
             display: flex;
-            align-items: flex-start;
+            flex-direction: column;
             margin-bottom: 15px;
             padding: 12px;
             background: #f8f9fa;
@@ -329,6 +329,12 @@
 
         .issue-item:hover {
             background: #e9ecef;
+        }
+
+        .issue-header {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
         }
 
         .issue-info {
@@ -356,6 +362,26 @@
 
         .issue-link:hover {
             text-decoration: underline;
+        }
+
+        .issue-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: #555;
         }
 
         .empty-state {
@@ -480,9 +506,20 @@
             '#DFE6E9', '#A29BFE', '#FD79A8', '#FDCB6E', '#6C5CE7'
         ];
 
+        // Map GitHub usernames to display names
+        const USER_DISPLAY_NAMES = {
+            'Ghostface-000': 'Wade',
+            'daisidaniels': 'Daisy',
+            // Add more mappings as needed
+        };
+
         let allMilestones = [];
         let selectedMember = null;
         let selectedSeverityFilter = null;
+
+        function getDisplayName(githubUsername) {
+            return USER_DISPLAY_NAMES[githubUsername] || githubUsername;
+        }
 
         function loadCompletedIssues() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -494,7 +531,6 @@
         }
 
         function getPriorityFromIssue(issue) {
-            // Check if issue has a Priority label (Severe, Medium, Low)
             if (issue.labels && Array.isArray(issue.labels)) {
                 for (let label of issue.labels) {
                     if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
@@ -506,7 +542,6 @@
         }
 
         function getMilestoneHighestPriority(milestone) {
-            // Get the highest priority from all issues in the milestone
             const priorities = milestone.issues
                 .map(issue => getPriorityFromIssue(issue))
                 .filter(p => p !== null);
@@ -575,7 +610,6 @@
                 return;
             }
 
-            // Fetch all issues for all milestones
             const milestonesWithIssues = await Promise.all(
                 milestones.map(async (milestone) => ({
                     ...milestone,
@@ -599,7 +633,6 @@
                     .map(m => getMilestoneHighestPriority(m))
                     .find(p => p !== null) || null;
                 
-                // Count issues - filter by severity filter if active
                 let totalIssues = 0;
                 memberMilestones.forEach(m => {
                     if (selectedSeverityFilter) {
@@ -634,7 +667,6 @@
             
             document.getElementById('teamMembers').innerHTML = membersHtml;
             
-            // Update filter button states
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 const severity = btn.textContent.includes('Severe') ? 'Severe' : 
                                btn.textContent.includes('Medium') ? 'Medium' : 'Low';
@@ -653,12 +685,10 @@
         }
 
         function renderDashboard(milestones) {
-            // Filter by selected member if any
             let filteredMilestones = selectedMember 
                 ? milestones.filter(m => m.title === selectedMember)
                 : milestones;
 
-            // Filter by selected severity if any
             if (selectedSeverityFilter) {
                 filteredMilestones = filteredMilestones.filter(m => {
                     return m.issues.some(issue => getPriorityFromIssue(issue) === selectedSeverityFilter);
@@ -669,10 +699,8 @@
             let totalIssues = 0;
             let completedCount = 0;
 
-            // Calculate stats
             filteredMilestones.forEach(milestone => {
                 milestone.issues.forEach(issue => {
-                    // Only count if no severity filter or if issue matches the filter
                     if (!selectedSeverityFilter || getPriorityFromIssue(issue) === selectedSeverityFilter) {
                         totalIssues++;
                         if (completed.includes(issue.id)) {
@@ -682,7 +710,6 @@
                 });
             });
 
-            // Render stats
             let filterLabel = '';
             if (selectedMember && selectedSeverityFilter) {
                 filterLabel = ` (${selectedMember} - ${selectedSeverityFilter})`;
@@ -708,12 +735,10 @@
             `;
             document.getElementById('stats').innerHTML = statsHtml;
 
-            // Render milestones
             let milestonesHtml = '';
             filteredMilestones.forEach((milestone) => {
                 const priority = getMilestoneHighestPriority(milestone);
                 
-                // Filter issues by severity if filter is active
                 let displayIssues = milestone.issues;
                 if (selectedSeverityFilter) {
                     displayIssues = milestone.issues.filter(issue => 
@@ -729,12 +754,26 @@
                 let issuesHtml = '';
                 displayIssues.forEach(issue => {
                     const isCompleted = completed.includes(issue.id);
+                    const assignedTo = issue.assignee ? getDisplayName(issue.assignee.login) : null;
+                    const reportedBy = issue.user ? getDisplayName(issue.user.login) : null;
+
+                    let metaHtml = '';
+                    if (assignedTo) {
+                        metaHtml += `<div class="meta-item"><span class="meta-label">👤 Assigned:</span> ${escapeHtml(assignedTo)}</div>`;
+                    }
+                    if (reportedBy) {
+                        metaHtml += `<div class="meta-item"><span class="meta-label">📝 Reported:</span> ${escapeHtml(reportedBy)}</div>`;
+                    }
+
                     issuesHtml += `
                         <div class="issue-item">
-                            <div class="issue-info">
-                                <div class="issue-title">${escapeHtml(issue.title)}</div>
-                                <div class="issue-number">Issue #${issue.number} <a href="${issue.html_url}" class="issue-link" target="_blank">View on GitHub →</a></div>
+                            <div class="issue-header">
+                                <div class="issue-info">
+                                    <div class="issue-title">${escapeHtml(issue.title)}</div>
+                                    <div class="issue-number">Issue #${issue.number} <a href="${issue.html_url}" class="issue-link" target="_blank">View on GitHub →</a></div>
+                                </div>
                             </div>
+                            ${metaHtml ? `<div class="issue-meta">${metaHtml}</div>` : ''}
                         </div>
                     `;
                 });
@@ -790,10 +829,8 @@
             document.getElementById('updateTime').textContent = timeString;
         }
 
-        // Start on page load
         window.addEventListener('load', () => {
             fetchAndRender();
-            // Auto-refresh every 60 seconds
             setInterval(() => {
                 fetchAndRender();
             }, 60000);
