@@ -251,22 +251,19 @@
 </div>
 
 <script>
-
-/* =========================
-   🔐 YOUR TOKEN HERE
-========================= */
-const GITHUB_TOKEN = "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";
-    console.log("TOKEN IS:", GITHUB_TOKEN);
-
-/* ========================= */
 const REPO_OWNER = 'Can-We-Fix-It';
 const REPO_NAME = 'Support-Team';
 
-let allMilestones = [];
+// 🔐 PUT YOUR NEW TOKEN HERE (classic token with repo access)
+const GITHUB_TOKEN = "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";
 
-/* =========================
-   HEADERS (TOKEN ADDED)
-========================= */
+const STORAGE_KEY = 'supportTeamDashboard_completed';
+
+let allMilestones = [];
+let selectedMember = null;
+let selectedSeverityFilter = null;
+
+// -------------------- HEADERS (IMPORTANT FIX) --------------------
 function getHeaders() {
     return {
         "Accept": "application/vnd.github.v3+json",
@@ -274,78 +271,168 @@ function getHeaders() {
     };
 }
 
-/* ========================= */
+// -------------------- ERROR HELPERS --------------------
+function showError(message) {
+    document.getElementById('error').innerHTML =
+        `<div class="error">⚠️ ${message}</div>`;
+}
+
+function clearError() {
+    document.getElementById('error').innerHTML = '';
+}
+
+// -------------------- FETCH MILESTONES --------------------
 async function fetchMilestones() {
-    const response = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`,
-        { headers: getHeaders() }
-    );
-
-    return await response.json();
-}
-
-/* ========================= */
-async function fetchIssues(milestoneNumber) {
-    const response = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`,
-        { headers: getHeaders() }
-    );
-
-    return await response.json();
-}
-
-/* ========================= */
-async function fetchAndRender() {
-    document.getElementById("milestones").innerHTML = "Loading...";
-
     try {
-        const milestones = await fetchMilestones();
+        clearError();
 
-        const full = await Promise.all(
-            milestones.map(async m => ({
-                ...m,
-                issues: await fetchIssues(m.number)
-            }))
+        const response = await fetch(
+            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`,
+            { headers: getHeaders() }
         );
 
-        render(full);
+        if (!response.ok) {
+            const text = await response.text();
+            console.log("MILESTONES ERROR:", response.status, text);
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
 
-    } catch (err) {
-        document.getElementById("milestones").innerHTML =
-            "❌ Error loading data (check token permissions)";
-        console.error(err);
+        return await response.json();
+
+    } catch (error) {
+        showError(`Failed to fetch milestones: ${error.message}`);
+        return [];
     }
 }
 
-/* ========================= */
-function render(milestones) {
-    let html = "";
+// -------------------- FETCH ISSUES --------------------
+async function fetchIssuesForMilestone(milestoneNumber) {
+    try {
+        const response = await fetch(
+            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`,
+            { headers: getHeaders() }
+        );
 
-    milestones.forEach(m => {
+        if (!response.ok) {
+            const text = await response.text();
+            console.log("ISSUES ERROR:", response.status, text);
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        return await response.json();
+
+    } catch (error) {
+        console.error('Error fetching issues:', error);
+        return [];
+    }
+}
+
+// -------------------- MAIN LOAD --------------------
+async function fetchAndRender() {
+    document.getElementById('milestones').innerHTML =
+        '<div class="loading">Loading milestones...</div>';
+
+    const milestones = await fetchMilestones();
+
+    if (!milestones || milestones.length === 0) {
+        document.getElementById('milestones').innerHTML =
+            '<div class="empty-state">No milestones found</div>';
+        return;
+    }
+
+    const milestonesWithIssues = await Promise.all(
+        milestones.map(async (m) => ({
+            ...m,
+            issues: await fetchIssuesForMilestone(m.number)
+        }))
+    );
+
+    allMilestones = milestonesWithIssues;
+
+    renderTeamMembers(milestonesWithIssues);
+    renderDashboard(milestonesWithIssues);
+}
+
+// -------------------- TEAM MEMBERS --------------------
+function renderTeamMembers(milestones) {
+    const uniqueMembers = [...new Set(milestones.map(m => m.title))];
+
+    let html = '';
+
+    uniqueMembers.forEach(member => {
+        const memberMilestones = milestones.filter(m => m.title === member);
+
+        let totalIssues = 0;
+        memberMilestones.forEach(m => totalIssues += m.issues.length);
+
+        html += `
+            <div class="member-item ${selectedMember === member ? 'active' : ''}"
+                 onclick="selectMember('${member.replace(/'/g, "\\'")}')">
+                <div class="member-info">
+                    <span class="member-name">${member}</span>
+                </div>
+                <span class="member-badge">${totalIssues}</span>
+            </div>
+        `;
+    });
+
+    document.getElementById('teamMembers').innerHTML = html;
+}
+
+// -------------------- SELECT MEMBER --------------------
+function selectMember(member) {
+    selectedMember = selectedMember === member ? null : member;
+    renderTeamMembers(allMilestones);
+    renderDashboard(allMilestones);
+}
+
+// -------------------- DASHBOARD --------------------
+function renderDashboard(milestones) {
+    let filtered = selectedMember
+        ? milestones.filter(m => m.title === selectedMember)
+        : milestones;
+
+    let total = 0;
+    filtered.forEach(m => total += m.issues.length);
+
+    document.getElementById('stats').innerHTML = `
+        <div class="stat-box">
+            <div class="stat-number">${total}</div>
+            <div class="stat-label">Total Issues</div>
+        </div>
+    `;
+
+    let html = '';
+
+    filtered.forEach(m => {
         html += `
             <div class="milestone-card">
                 <div class="milestone-header">
-                    <h3>${m.title}</h3>
-                    <p>${m.issues.length} issues</p>
+                    <div class="milestone-title">${m.title}</div>
+                    <div class="progress-text">${m.issues.length} issues</div>
                 </div>
 
                 <div class="milestone-content">
                     ${m.issues.map(i => `
                         <div class="issue-item">
-                            #${i.number} ${i.title}
+                            <div class="issue-title">${i.title}</div>
+                            <div class="issue-number">#${i.number}</div>
                         </div>
-                    `).join("")}
+                    `).join('')}
                 </div>
             </div>
         `;
     });
 
-    document.getElementById("milestones").innerHTML = html;
+    document.getElementById('milestones').innerHTML = html;
 }
 
-/* ========================= */
-window.onload = fetchAndRender;
+// -------------------- INIT --------------------
+window.addEventListener('load', () => {
+    fetchAndRender();
 
+    setInterval(fetchAndRender, 60000);
+});
 </script>
 </body>
 </html>
