@@ -1,840 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Team - Issue Tracking Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-            padding: 20px;
-        }
-
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .subtitle {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 40px;
-        }
-
-        .stat-box {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .team-members {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            height: fit-content;
-            position: sticky;
-            top: 20px;
-        }
-
-        .team-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .member-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .member-item:last-child {
-            border-bottom: none;
-        }
-
-        .member-item:hover {
-            background: #f5f5f5;
-        }
-
-        .member-item.active {
-            background: #667eea;
-            color: white;
-            font-weight: bold;
-        }
-
-        .member-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex: 1;
-        }
-
-        .member-name {
-            flex: 1;
-        }
-
-        .member-severity-badge {
-            font-size: 0.7em;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-weight: bold;
-            margin-left: 8px;
-        }
-
-        .severity-severe-badge {
-            background: #ff4444;
-            color: white;
-        }
-
-        .severity-medium-badge {
-            background: #ffaa00;
-            color: white;
-        }
-
-        .severity-low-badge {
-            background: #44aa44;
-            color: white;
-        }
-
-        .member-badge {
-            background: #667eea;
-            color: white;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-            flex-shrink: 0;
-        }
-
-        .member-item.active .member-badge {
-            background: white;
-            color: #667eea;
-        }
-
-        .severity-filter {
-            display: flex;
-            gap: 8px;
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
-            background: #f9f9f9;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            flex: 1;
-            min-width: 70px;
-            padding: 8px 12px;
-            border: 2px solid;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.75em;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .filter-btn.severe {
-            border-color: #ff4444;
-            color: #ff4444;
-        }
-
-        .filter-btn.severe.active {
-            background: #ff4444;
-            color: white;
-        }
-
-        .filter-btn.medium {
-            border-color: #ffaa00;
-            color: #ffaa00;
-        }
-
-        .filter-btn.medium.active {
-            background: #ffaa00;
-            color: white;
-        }
-
-        .filter-btn.low {
-            border-color: #44aa44;
-            color: #44aa44;
-        }
-
-        .filter-btn.low.active {
-            background: #44aa44;
-            color: white;
-        }
-
-        .filter-label {
-            width: 100%;
-            font-size: 0.75em;
-            color: #666;
-            text-align: center;
-            padding: 5px 0 0 0;
-        }
-
-        .milestones {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-        }
-
-        .milestone-card {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .milestone-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-        }
-
-        .milestone-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-        }
-
-        .milestone-title-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .milestone-title {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-
-        .severity-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: bold;
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .severity-severe {
-            background: #ff4444 !important;
-            color: white;
-        }
-
-        .severity-medium {
-            background: #ffaa00 !important;
-            color: white;
-        }
-
-        .severity-low {
-            background: #44aa44 !important;
-            color: white;
-        }
-
-        .progress-bar {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            height: 8px;
-            overflow: hidden;
-            margin-bottom: 8px;
-            margin-top: 12px;
-        }
-
-        .progress-fill {
-            background: #4ade80;
-            height: 100%;
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-
-        .progress-text {
-            font-size: 0.9em;
-            opacity: 0.9;
-            margin-top: 8px;
-        }
-
-        .milestone-content {
-            padding: 20px;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .issue-item {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 15px;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .issue-item:hover {
-            background: #e9ecef;
-        }
-
-        .issue-header {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
-        .issue-info {
-            flex: 1;
-        }
-
-        .issue-title {
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 4px;
-            word-break: break-word;
-        }
-
-        .issue-number {
-            color: #999;
-            font-size: 0.85em;
-        }
-
-        .issue-link {
-            color: #667eea;
-            text-decoration: none;
-            margin-left: 8px;
-            font-size: 0.85em;
-        }
-
-        .issue-link:hover {
-            text-decoration: underline;
-        }
-
-        .issue-meta {
-            display: flex;
-            gap: 15px;
-            font-size: 0.8em;
-            color: #666;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .meta-label {
-            font-weight: 600;
-            color: #555;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
-        }
-
-        .footer {
-            text-align: center;
-            color: white;
-            padding: 20px;
-            margin-top: 40px;
-            opacity: 0.8;
-        }
-
-        .update-time {
-            font-size: 0.9em;
-            color: white;
-            opacity: 0.7;
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .loading {
-            text-align: center;
-            color: white;
-            font-size: 1.2em;
-            padding: 40px;
-        }
-
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border: 1px solid #fcc;
-        }
-
-        .refresh-btn {
-            background: white;
-            color: #667eea;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-            transition: all 0.2s ease;
-        }
-
-        .refresh-btn:hover {
-            background: #f0f0f0;
-            transform: scale(1.05);
-        }
-
-        @media (max-width: 968px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            .team-members {
-                position: relative;
-                top: auto;
-            }
-
-            h1 {
-                font-size: 1.8em;
-            }
-
-            .milestones {
-                grid-template-columns: 1fr;
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<title>GitHub Milestones</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+    }
+
+    #milestone-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .milestone-card {
+        background: #fff;
+        padding: 15px;
+        width: 280px;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .priority-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .priority-high { background: #e74c3c; }
+    .priority-medium { background: #f1c40f; color: black; }
+    .priority-low { background: #2ecc71; }
+    .priority-none { background: #7f8c8d; }
+</style>
 </head>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>🎯 Support Team Dashboard</h1>
-            <p class="subtitle">Track issues by team member and severity</p>
-            <button class="refresh-btn" onclick="fetchAndRender()">🔄 Refresh Data</button>
-        </header>
 
-        <div id="error"></div>
-        <div class="stats" id="stats"></div>
+<h1>GitHub Milestones</h1>
 
-        <div class="main-content">
-            <div class="team-members">
-                <div class="team-header">👥 Team Members</div>
-                <div id="teamMembers"></div>
-                <div class="severity-filter">
-                    <button class="filter-btn severe" onclick="toggleSeverityFilter('Severe')">🔴 Severe</button>
-                    <button class="filter-btn medium" onclick="toggleSeverityFilter('Medium')">🟠 Medium</button>
-                    <button class="filter-btn low" onclick="toggleSeverityFilter('Low')">🟢 Low</button>
-                    <div class="filter-label">Filter by priority</div>
-                </div>
-            </div>
-            <div class="milestones" id="milestones"></div>
-        </div>
+<div id="milestone-container"></div>
 
-        <div class="update-time">
-            Last updated: <span id="updateTime">Loading...</span>
-        </div>
+<script>
+const owner = "can-we-fix-it";   // change if needed
+const repo = "Support-Team";     // change if needed
 
-        <div class="footer">
-            <p>💡 Click team members to filter • Use priority buttons to filter • Priorities set on GitHub</p>
-        </div>
-    </div>
+async function loadMilestones() {
+    const url = `https://api.github.com/repos/${owner}/${repo}/milestones?state=open`;
 
-    <script>
-        const REPO_OWNER = 'Can-We-Fix-It';
-        const REPO_NAME = 'Support-Team';
-        const STORAGE_KEY = 'supportTeamDashboard_completed';
-        const COLORS = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-            '#DFE6E9', '#A29BFE', '#FD79A8', '#FDCB6E', '#6C5CE7'
-        ];
-
-        // Map GitHub usernames to display names
-        const USER_DISPLAY_NAMES = {
-            'Ghostface-000': 'Wade',
-            'daisidaniels': 'Daisy',
-            // Add more mappings as needed
-        };
-
-        let allMilestones = [];
-        let selectedMember = null;
-        let selectedSeverityFilter = null;
-
-        function getDisplayName(githubUsername) {
-            return USER_DISPLAY_NAMES[githubUsername] || githubUsername;
-        }
-
-        function loadCompletedIssues() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
-        }
-
-        function saveCompletedIssues(completed) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
-        }
-
-        function getPriorityFromIssue(issue) {
-            if (issue.labels && Array.isArray(issue.labels)) {
-                for (let label of issue.labels) {
-                    if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
-                        return label.name;
-                    }
-                }
-            }
-            return null;
-        }
-
-        function getMilestoneHighestPriority(milestone) {
-            const priorities = milestone.issues
-                .map(issue => getPriorityFromIssue(issue))
-                .filter(p => p !== null);
-
-            if (priorities.includes('Severe')) return 'Severe';
-            if (priorities.includes('Medium')) return 'Medium';
-            if (priorities.includes('Low')) return 'Low';
-            return null;
-        }
-
-        function toggleSeverityFilter(severity) {
-            selectedSeverityFilter = selectedSeverityFilter === severity ? null : severity;
-            renderTeamMembers(allMilestones);
-            renderDashboard(allMilestones);
-        }
-
-        function showError(message) {
-            document.getElementById('error').innerHTML = `<div class="error">⚠️ ${message}</div>`;
-        }
-
-        function clearError() {
-            document.getElementById('error').innerHTML = '';
-        }
-
-        async function fetchMilestones() {
-            try {
-                clearError();
-                const response = await fetch(
-                    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`,
-                    { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-                );
-                
-                if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
-                
-                return await response.json();
-            } catch (error) {
-                showError(`Failed to fetch milestones: ${error.message}`);
-                return [];
-            }
-        }
-
-        async function fetchIssuesForMilestone(milestoneNumber) {
-            try {
-                const response = await fetch(
-                    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`,
-                    { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-                );
-                
-                if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
-                
-                return await response.json();
-            } catch (error) {
-                console.error('Error fetching issues:', error);
-                return [];
-            }
-        }
-
-        async function fetchAndRender() {
-            document.getElementById('milestones').innerHTML = '<div class="loading">Loading milestones...</div>';
-            
-            const milestones = await fetchMilestones();
-            
-            if (milestones.length === 0) {
-                document.getElementById('milestones').innerHTML = '<div class="empty-state">No milestones found</div>';
-                updateTime();
-                return;
-            }
-
-            const milestonesWithIssues = await Promise.all(
-                milestones.map(async (milestone) => ({
-                    ...milestone,
-                    issues: await fetchIssuesForMilestone(milestone.number)
-                }))
-            );
-
-            allMilestones = milestonesWithIssues;
-            renderTeamMembers(milestonesWithIssues);
-            renderDashboard(milestonesWithIssues);
-        }
-
-        function renderTeamMembers(milestones) {
-            const uniqueMembers = [...new Set(milestones.map(m => m.title))];
-            
-            let membersHtml = '';
-            
-            uniqueMembers.forEach((member) => {
-                const memberMilestones = milestones.filter(m => m.title === member);
-                const memberHighestPriority = memberMilestones
-                    .map(m => getMilestoneHighestPriority(m))
-                    .find(p => p !== null) || null;
-                
-                let totalIssues = 0;
-                memberMilestones.forEach(m => {
-                    if (selectedSeverityFilter) {
-                        const issuesWithFilter = m.issues.filter(issue => {
-                            const priority = getPriorityFromIssue(issue);
-                            return priority === selectedSeverityFilter;
-                        });
-                        totalIssues += issuesWithFilter.length;
-                    } else {
-                        totalIssues += m.issues.length;
-                    }
-                });
-
-                const isActive = selectedMember === member ? 'active' : '';
-                
-                let severityBadgeHtml = '';
-                if (memberHighestPriority) {
-                    const severityClass = memberHighestPriority.toLowerCase();
-                    severityBadgeHtml = `<span class="member-severity-badge severity-${severityClass}-badge">${memberHighestPriority.toUpperCase()}</span>`;
-                }
-                
-                membersHtml += `
-                    <div class="member-item ${isActive}" onclick="selectMember('${escapeHtml(member)}')">
-                        <div class="member-info">
-                            <span class="member-name">${escapeHtml(member)}</span>
-                            ${severityBadgeHtml}
-                        </div>
-                        <span class="member-badge">${totalIssues}</span>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('teamMembers').innerHTML = membersHtml;
-            
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                const severity = btn.textContent.includes('Severe') ? 'Severe' : 
-                               btn.textContent.includes('Medium') ? 'Medium' : 'Low';
-                if (selectedSeverityFilter === severity) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-        }
-
-        function selectMember(memberName) {
-            selectedMember = selectedMember === memberName ? null : memberName;
-            renderTeamMembers(allMilestones);
-            renderDashboard(allMilestones);
-        }
-
-        function renderDashboard(milestones) {
-            let filteredMilestones = selectedMember 
-                ? milestones.filter(m => m.title === selectedMember)
-                : milestones;
-
-            if (selectedSeverityFilter) {
-                filteredMilestones = filteredMilestones.filter(m => {
-                    return m.issues.some(issue => getPriorityFromIssue(issue) === selectedSeverityFilter);
-                });
-            }
-
-            const completed = loadCompletedIssues();
-            let totalIssues = 0;
-            let completedCount = 0;
-
-            filteredMilestones.forEach(milestone => {
-                milestone.issues.forEach(issue => {
-                    if (!selectedSeverityFilter || getPriorityFromIssue(issue) === selectedSeverityFilter) {
-                        totalIssues++;
-                        if (completed.includes(issue.id)) {
-                            completedCount++;
-                        }
-                    }
-                });
-            });
-
-            let filterLabel = '';
-            if (selectedMember && selectedSeverityFilter) {
-                filterLabel = ` (${selectedMember} - ${selectedSeverityFilter})`;
-            } else if (selectedMember) {
-                filterLabel = ` (${selectedMember})`;
-            } else if (selectedSeverityFilter) {
-                filterLabel = ` (${selectedSeverityFilter})`;
-            }
-
-            const statsHtml = `
-                <div class="stat-box">
-                    <div class="stat-number">${totalIssues}</div>
-                    <div class="stat-label">Total Issues${filterLabel}</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-number">${completedCount}</div>
-                    <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-number">${totalIssues > 0 ? Math.round((completedCount / totalIssues) * 100) : 0}%</div>
-                    <div class="stat-label">Progress</div>
-                </div>
-            `;
-            document.getElementById('stats').innerHTML = statsHtml;
-
-            let milestonesHtml = '';
-            filteredMilestones.forEach((milestone) => {
-                const priority = getMilestoneHighestPriority(milestone);
-                
-                let displayIssues = milestone.issues;
-                if (selectedSeverityFilter) {
-                    displayIssues = milestone.issues.filter(issue => 
-                        getPriorityFromIssue(issue) === selectedSeverityFilter
-                    );
-                }
-
-                const milestoneCompleted = displayIssues.filter(issue => completed.includes(issue.id)).length;
-                const progress = displayIssues.length > 0 ? (milestoneCompleted / displayIssues.length) * 100 : 0;
-                const colorIndex = parseInt(milestone.number) % COLORS.length;
-                const color = COLORS[colorIndex];
-
-                let issuesHtml = '';
-                displayIssues.forEach(issue => {
-                    const isCompleted = completed.includes(issue.id);
-                    const assignedTo = issue.assignee ? getDisplayName(issue.assignee.login) : null;
-                    const reportedBy = issue.user ? getDisplayName(issue.user.login) : null;
-
-                    let metaHtml = '';
-                    if (assignedTo) {
-                        metaHtml += `<div class="meta-item"><span class="meta-label">👤 Assigned:</span> ${escapeHtml(assignedTo)}</div>`;
-                    }
-                    if (reportedBy) {
-                        metaHtml += `<div class="meta-item"><span class="meta-label">📝 Reported:</span> ${escapeHtml(reportedBy)}</div>`;
-                    }
-
-                    issuesHtml += `
-                        <div class="issue-item">
-                            <div class="issue-header">
-                                <div class="issue-info">
-                                    <div class="issue-title">${escapeHtml(issue.title)}</div>
-                                    <div class="issue-number">Issue #${issue.number} <a href="${issue.html_url}" class="issue-link" target="_blank">View on GitHub →</a></div>
-                                </div>
-                            </div>
-                            ${metaHtml ? `<div class="issue-meta">${metaHtml}</div>` : ''}
-                        </div>
-                    `;
-                });
-
-                milestonesHtml += `
-                    <div class="milestone-card">
-                        <div class="milestone-header" style="background: linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -30)} 100%);">
-                            <div class="milestone-title-section">
-                                <div class="milestone-title">${escapeHtml(milestone.title)}</div>
-                                ${priority ? `<span class="severity-badge severity-${priority.toLowerCase()}">${priority.toUpperCase()}</span>` : ''}
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${progress}%"></div>
-                            </div>
-                            <div class="progress-text">${displayIssues.length} issues</div>
-                        </div>
-                        <div class="milestone-content">
-                            ${issuesHtml || '<div class="empty-state">No issues in this milestone</div>'}
-                        </div>
-                    </div>
-                `;
-            });
-
-            document.getElementById('milestones').innerHTML = milestonesHtml || '<div class="empty-state">No milestones found</div>';
-            updateTime();
-        }
-
-        function adjustColor(color, percent) {
-            const num = parseInt(color.replace('#', ''), 16);
-            const amt = Math.round(2.55 * percent);
-            const R = (num >> 16) + amt;
-            const G = (num >> 8 & 0x00FF) + amt;
-            const B = (num & 0x0000FF) + amt;
-            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-                (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-                (B < 255 ? B < 1 ? 0 : B : 255))
-                .toString(16).slice(1);
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            document.getElementById('updateTime').textContent = timeString;
-        }
-
-        window.addEventListener('load', () => {
-            fetchAndRender();
-            setInterval(() => {
-                fetchAndRender();
-            }, 60000);
+    try {
+        const response = await fetch(url, {
+            headers: { "Accept": "application/vnd.github+json" }
         });
-    </script>
+
+        if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        const milestones = await response.json();
+        renderMilestoneCards(milestones);
+
+    } catch (error) {
+        console.error("Error loading milestones:", error);
+        document.getElementById("milestone-container").innerHTML =
+            `<p>Unable to load milestones.</p>`;
+    }
+}
+
+function extractPriority(milestone) {
+    // 1️⃣ Check labels for priority
+    if (milestone.labels) {
+        const label = milestone.labels.find(l =>
+            l.name.toLowerCase().includes("priority")
+        );
+        if (label) {
+            return label.name.replace(/priority[: ]*/i, "").trim();
+        }
+    }
+
+    // 2️⃣ Check description for "Priority: X"
+    if (milestone.description) {
+        const match = milestone.description.match(/priority[:\- ]+(\w+)/i);
+        if (match) {
+            return match[1];
+        }
+    }
+
+    // 3️⃣ Default
+    return "None";
+}
+
+function priorityClass(priority) {
+    switch (priority.toLowerCase()) {
+        case "high": return "priority-high";
+        case "medium": return "priority-medium";
+        case "low": return "priority-low";
+        default: return "priority-none";
+    }
+}
+
+function renderMilestoneCards(milestones) {
+    const container = document.getElementById("milestone-container");
+    container.innerHTML = "";
+
+    milestones.forEach(m => {
+        const priority = extractPriority(m);
+        const badgeClass = priorityClass(priority);
+
+        const card = document.createElement("div");
+        card.className = "milestone-card";
+
+        card.innerHTML = `
+            <span class="priority-badge ${badgeClass}">
+                ${priority}
+            </span>
+
+            <h3>${m.title}</h3>
+
+            <p><strong>Due:</strong> 
+                ${m.due_on ? new Date(m.due_on).toLocaleDateString() : "None"}
+            </p>
+
+            <p>${m.description || ""}</p>
+
+            <a href="${m.html_url}" target="_blank">View on GitHub</a>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+loadMilestones();
+</script>
+
 </body>
 </html>
