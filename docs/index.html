@@ -179,7 +179,7 @@ const REPO_NAME = 'Support-Team';
    - Use a GitHub Personal Access Token
    - DO NOT expose on public sites if possible
 */
-const GITHUB_TOKEN = "PASTE_YOUR_TOKEN_HERE";
+const GITHUB_TOKEN = "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";
 
 /* ========================= */
 
@@ -189,7 +189,7 @@ async function githubFetch(url) {
     };
 
     // attach token if provided
-    if (GITHUB_TOKEN && GITHUB_TOKEN !== "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") {
+    if (GITHUB_TOKEN && GITHUB_TOKEN !== "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") {
         headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
     }
 
