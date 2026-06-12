@@ -3,61 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Dashboard</title>
+<title>Support Team Dashboard</title>
 
 <style>
 body {
-    font-family: Arial;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
     background: linear-gradient(135deg,#667eea,#764ba2);
-    margin:0;
-    padding:20px;
-    color:white;
+    color: white;
 }
 
-.container { max-width:1200px; margin:auto; }
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
 
-header { text-align:center; margin-bottom:20px; }
+header {
+    text-align: center;
+    margin-bottom: 20px;
+}
 
 .stats {
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:10px;
-    margin-bottom:20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 .stat-box {
-    background:white;
-    color:black;
-    padding:15px;
-    border-radius:10px;
-    text-align:center;
+    background: white;
+    color: black;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
 }
 
 .main {
-    display:grid;
-    grid-template-columns:250px 1fr;
-    gap:20px;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 20px;
 }
 
 .sidebar {
-    background:white;
-    color:black;
-    border-radius:10px;
-    padding:10px;
-    height:fit-content;
+    background: white;
+    color: black;
+    padding: 10px;
+    border-radius: 10px;
+    height: fit-content;
 }
 
 .card {
-    background:white;
-    color:black;
-    border-radius:10px;
-    margin-bottom:15px;
-    padding:15px;
+    background: white;
+    color: black;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
 }
 
 .issue {
-    padding:10px;
-    border-bottom:1px solid #eee;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
 }
 </style>
 </head>
@@ -78,38 +84,57 @@ header { text-align:center; margin-bottom:20px; }
 </div>
 
 <script>
+
+///////////////////////////////////////////////////////////
+// 🔐 YOUR CLASSIC TOKEN GOES HERE
+///////////////////////////////////////////////////////////
+const GITHUB_TOKEN = "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";
+
 const OWNER = "Can-We-Fix-It";
 const REPO = "Support-Team";
 
-let milestonesData = [];
+let store = [];
 
-/* -------------------------
-   SIMPLE FETCH (NO TOKEN)
-------------------------- */
+///////////////////////////////////////////////////////////
+// ✅ API CALL (CORRECT AUTH FORMAT)
+///////////////////////////////////////////////////////////
 async function api(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("GitHub API " + res.status);
-    return res.json();
+    const res = await fetch(url, {
+        headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `token ${GITHUB_TOKEN}`
+        }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        console.log(data);
+        throw new Error("GitHub API " + res.status);
+    }
+
+    return data;
 }
 
-/* -------------------------
-   PRIORITY DETECTION
-------------------------- */
-function priority(issue) {
+///////////////////////////////////////////////////////////
+// 🎯 PRIORITY DETECTION
+///////////////////////////////////////////////////////////
+function getPriority(issue) {
     const labels = (issue.labels || []).map(l => l.name.toLowerCase());
 
-    if (labels.some(l => l.includes("severe") || l.includes("p0"))) return "Severe";
-    if (labels.some(l => l.includes("medium") || l.includes("p2"))) return "Medium";
-    if (labels.some(l => l.includes("low") || l.includes("p3"))) return "Low";
+    if (labels.includes("severe")) return "Severe";
+    if (labels.includes("medium")) return "Medium";
+    if (labels.includes("low")) return "Low";
 
     return "None";
 }
 
-/* -------------------------
-   LOAD DATA
-------------------------- */
+///////////////////////////////////////////////////////////
+// 📥 LOAD DATA
+///////////////////////////////////////////////////////////
 async function load() {
     try {
+        document.getElementById("content").innerHTML = "Loading...";
 
         const milestones = await api(
             `https://api.github.com/repos/${OWNER}/${REPO}/milestones?state=all`
@@ -125,19 +150,18 @@ async function load() {
             full.push({ ...m, issues });
         }
 
-        milestonesData = full;
-
+        store = full;
         render(full);
 
     } catch (err) {
         document.getElementById("content").innerHTML =
-            "<h3>Error: " + err.message + "</h3>";
+            `<div style="color:red;">Error: ${err.message}</div>`;
     }
 }
 
-/* -------------------------
-   RENDER
-------------------------- */
+///////////////////////////////////////////////////////////
+// 🎨 RENDER
+///////////////////////////////////////////////////////////
 function render(data) {
 
     let total = 0;
@@ -156,7 +180,7 @@ function render(data) {
             html += `
                 <div class="issue">
                     <b>${i.title}</b><br>
-                    Priority: ${priority(i)}
+                    Priority: ${getPriority(i)}
                 </div>
             `;
         });
@@ -178,8 +202,9 @@ function render(data) {
         data.map(m => `<div>• ${m.title}</div>`).join("");
 }
 
-/* ------------------------- */
+///////////////////////////////////////////////////////////
 load();
+
 </script>
 
 </body>
