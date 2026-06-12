@@ -298,25 +298,22 @@ test();
 
 // ---------------- MAIN LOAD ----------------
 async function fetchAndRender() {
-    const container = getEl('milestones');
-    if (container) {
-        container.innerHTML = '<div class="loading">Loading issues...</div>';
-    }
+    document.getElementById('milestones').innerHTML =
+        '<div class="loading">Loading milestones...</div>';
 
-    const issues = await fetchIssues();
+    const milestones = await fetchMilestones();
 
-    if (!issues || issues.length === 0) {
-        if (container) {
-            container.innerHTML = '<div class="empty-state">No issues found</div>';
-        }
-        return;
-    }
+    const milestonesWithIssues = await Promise.all(
+        milestones.map(async (milestone) => ({
+            ...milestone,
+            issues: await fetchIssuesForMilestone(milestone.number)
+        }))
+    );
 
-    allIssues = issues;
+    allMilestones = milestonesWithIssues;
 
-    renderIssues(issues);
-    renderStats(issues);
-    renderTeamMembers(issues);
+    renderTeamMembers(milestonesWithIssues);
+    renderDashboard(milestonesWithIssues);
 }
 
 // ---------------- STATS ----------------
