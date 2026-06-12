@@ -169,6 +169,66 @@
             color: #667eea;
         }
 
+        .severity-filter {
+            display: flex;
+            gap: 8px;
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            background: #f9f9f9;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px 12px;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.75em;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .filter-btn.severe {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .filter-btn.severe.active {
+            background: #ff4444;
+            color: white;
+        }
+
+        .filter-btn.medium {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+
+        .filter-btn.medium.active {
+            background: #ffaa00;
+            color: white;
+        }
+
+        .filter-btn.low {
+            border-color: #44aa44;
+            color: #44aa44;
+        }
+
+        .filter-btn.low.active {
+            background: #44aa44;
+            color: white;
+        }
+
+        .filter-label {
+            width: 100%;
+            font-size: 0.75em;
+            color: #666;
+            text-align: center;
+            padding: 5px 0 0 0;
+        }
+
         .milestones {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -229,49 +289,34 @@
             color: white;
         }
 
-        .severity-selector {
+        .severity-display {
             display: flex;
             gap: 8px;
             margin-top: 12px;
+            flex-wrap: wrap;
         }
 
-        .severity-btn {
-            flex: 1;
-            padding: 8px;
+        .severity-display-btn {
+            padding: 6px 12px;
             border: none;
             border-radius: 6px;
-            cursor: pointer;
+            cursor: default;
             font-weight: bold;
-            font-size: 0.85em;
-            transition: all 0.2s ease;
-            opacity: 0.4;
+            font-size: 0.8em;
+            opacity: 0.5;
             color: white;
         }
 
-        .severity-btn.severe {
+        .severity-display-btn.severe {
             background: #ff4444;
         }
 
-        .severity-btn.medium {
+        .severity-display-btn.medium {
             background: #ffaa00;
         }
 
-        .severity-btn.low {
+        .severity-display-btn.low {
             background: #44aa44;
-        }
-
-        .severity-btn.selected {
-            opacity: 1;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-            transform: scale(1.05);
-        }
-
-        .severity-btn:hover {
-            opacity: 0.7;
-        }
-
-        .severity-btn.selected:hover {
-            opacity: 1;
         }
 
         .progress-bar {
@@ -280,6 +325,7 @@
             height: 8px;
             overflow: hidden;
             margin-bottom: 8px;
+            margin-top: 12px;
         }
 
         .progress-fill {
@@ -292,6 +338,7 @@
         .progress-text {
             font-size: 0.9em;
             opacity: 0.9;
+            margin-top: 8px;
         }
 
         .milestone-content {
@@ -451,7 +498,16 @@
         <div class="stats" id="stats"></div>
 
         <div class="main-content">
-            <div class="team-members" id="teamMembers"></div>
+            <div class="team-members">
+                <div class="team-header">👥 Team Members</div>
+                <div id="teamMembers"></div>
+                <div class="severity-filter">
+                    <button class="filter-btn severe" onclick="toggleSeverityFilter('severe')">🔴 Severe</button>
+                    <button class="filter-btn medium" onclick="toggleSeverityFilter('medium')">🟠 Medium</button>
+                    <button class="filter-btn low" onclick="toggleSeverityFilter('low')">🟢 Low</button>
+                    <div class="filter-label">Filter by severity</div>
+                </div>
+            </div>
             <div class="milestones" id="milestones"></div>
         </div>
 
@@ -460,7 +516,7 @@
         </div>
 
         <div class="footer">
-            <p>💡 Click team members to filter • Set severity levels • Greyed out buttons show inactive levels</p>
+            <p>💡 Click team members to filter • Use severity buttons to filter by priority • Priorities set on GitHub</p>
         </div>
     </div>
 
@@ -476,6 +532,7 @@
 
         let allMilestones = [];
         let selectedMember = null;
+        let selectedSeverityFilter = null;
 
         function loadCompletedIssues() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -500,16 +557,10 @@
             return severities[milestoneName] || null;
         }
 
-        function setSeverity(milestoneName, severity) {
-            const severities = loadSeverities();
-            if (severities[milestoneName] === severity) {
-                // Toggle off if clicking same severity
-                delete severities[milestoneName];
-            } else {
-                severities[milestoneName] = severity;
-            }
-            saveSeverities(severities);
-            fetchAndRender();
+        function toggleSeverityFilter(severity) {
+            selectedSeverityFilter = selectedSeverityFilter === severity ? null : severity;
+            renderTeamMembers(allMilestones);
+            renderDashboard(allMilestones);
         }
 
         function showError(message) {
@@ -581,12 +632,24 @@
             const uniqueMembers = [...new Set(milestones.map(m => m.title))];
             const severities = loadSeverities();
             
-            let membersHtml = '<div class="team-header">👥 Team Members</div>';
+            let membersHtml = '';
             
             uniqueMembers.forEach((member, index) => {
                 const memberMilestones = milestones.filter(m => m.title === member);
-                const totalIssues = memberMilestones.reduce((sum, m) => sum + m.issues.length, 0);
                 const severity = getSeverity(member);
+                
+                // Count issues - filter by severity filter if active
+                let totalIssues = 0;
+                memberMilestones.forEach(m => {
+                    if (selectedSeverityFilter) {
+                        if (severities[m.title] === selectedSeverityFilter) {
+                            totalIssues += m.issues.length;
+                        }
+                    } else {
+                        totalIssues += m.issues.length;
+                    }
+                });
+
                 const isActive = selectedMember === member ? 'active' : '';
                 
                 let severityBadgeHtml = '';
@@ -606,6 +669,16 @@
             });
             
             document.getElementById('teamMembers').innerHTML = membersHtml;
+            
+            // Update filter button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                const severity = btn.classList[1];
+                if (selectedSeverityFilter === severity) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
         }
 
         function selectMember(memberName) {
@@ -620,7 +693,12 @@
                 ? milestones.filter(m => m.title === selectedMember)
                 : milestones;
 
+            // Filter by selected severity if any
             const severities = loadSeverities();
+            if (selectedSeverityFilter) {
+                filteredMilestones = filteredMilestones.filter(m => severities[m.title] === selectedSeverityFilter);
+            }
+
             const completed = loadCompletedIssues();
             let totalIssues = 0;
             let completedCount = 0;
@@ -637,13 +715,12 @@
 
             // Render stats
             let filterLabel = '';
-            if (selectedMember) {
-                const memberSeverity = getSeverity(selectedMember);
-                if (memberSeverity) {
-                    filterLabel = ` (${selectedMember} - ${memberSeverity})`;
-                } else {
-                    filterLabel = ` (${selectedMember})`;
-                }
+            if (selectedMember && selectedSeverityFilter) {
+                filterLabel = ` (${selectedMember} - ${selectedSeverityFilter})`;
+            } else if (selectedMember) {
+                filterLabel = ` (${selectedMember})`;
+            } else if (selectedSeverityFilter) {
+                filterLabel = ` (${selectedSeverityFilter})`;
             }
 
             const statsHtml = `
@@ -684,6 +761,12 @@
                     `;
                 });
 
+                // Show severity display buttons (read-only, not clickable)
+                let severityDisplayHtml = '';
+                if (severity) {
+                    severityDisplayHtml = `<div class="severity-display"><span class="severity-display-btn ${severity}">${severity.toUpperCase()}</span></div>`;
+                }
+
                 milestonesHtml += `
                     <div class="milestone-card">
                         <div class="milestone-header" style="background: linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -30)} 100%);">
@@ -691,12 +774,8 @@
                                 <div class="milestone-title">${escapeHtml(milestone.title)}</div>
                                 ${severity ? `<span class="severity-badge severity-${severity}">${severity.toUpperCase()}</span>` : ''}
                             </div>
-                            <div class="severity-selector">
-                                <button class="severity-btn severe ${severity === 'severe' ? 'selected' : ''}" onclick="setSeverity('${escapeHtml(milestone.title)}', 'severe')">🔴 Severe</button>
-                                <button class="severity-btn medium ${severity === 'medium' ? 'selected' : ''}" onclick="setSeverity('${escapeHtml(milestone.title)}', 'medium')">🟠 Medium</button>
-                                <button class="severity-btn low ${severity === 'low' ? 'selected' : ''}" onclick="setSeverity('${escapeHtml(milestone.title)}', 'low')">🟢 Low</button>
-                            </div>
-                            <div class="progress-bar" style="margin-top: 12px;">
+                            ${severityDisplayHtml}
+                            <div class="progress-bar">
                                 <div class="progress-fill" style="width: ${progress}%"></div>
                             </div>
                             <div class="progress-text">${milestoneCompleted} of ${milestone.issues.length} completed</div>
