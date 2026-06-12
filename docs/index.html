@@ -253,124 +253,156 @@
 <script>
 const REPO_OWNER = 'Can-We-Fix-It';
 const REPO_NAME = 'Support-Team';
-const STORAGE_KEY = 'supportTeamDashboard_completed';
 
-// 🔐 PUT YOUR NEW TOKEN HERE (classic token with repo access)
-const GITHUB_TOKEN = "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";
-
-let allIssues = [];
+let allMilestones = [];
 let selectedMember = null;
 let selectedSeverityFilter = null;
 
-function getHeaders() {
-    return {
-        "Accept": "application/vnd.github+json",
-        "Authorization": `Bearer ${GITHUB_TOKEN}`
-    };
-}
-
-// ---------------- FETCH ----------------
-async function fetchIssues() {
-    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100`;
-
-    const res = await fetch(url, { headers: getHeaders() });
-
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`GitHub Error ${res.status}: ${text}`);
-    }
-
-    return await res.json();
-}
-
-// ---------------- PRIORITY ----------------
-function getPriority(issue) {
-    if (!issue.labels) return null;
-
-    for (const label of issue.labels) {
-        if (["Severe", "Medium", "Low"].includes(label.name)) {
-            return label.name;
+function getPriorityFromIssue(issue) {
+    if (issue.labels && Array.isArray(issue.labels)) {
+        for (let label of issue.labels) {
+            if (label.name === 'Severe' || label.name === 'Medium' || label.name === 'Low') {
+                return label.name;
+            }
         }
     }
     return null;
 }
 
-// ---------------- NAME ----------------
-function getName(user) {
+function getDisplayName(user) {
     return user?.login || "Unassigned";
 }
 
-// ---------------- RENDER ----------------
-function render() {
-    let issues = allIssues;
+/* =========================
+   FETCH MILESTONES
+========================= */
+async function fetchMilestones() {
+    const res = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=50`
+    );
 
-    if (selectedSeverityFilter) {
-        issues = issues.filter(i => getPriority(i) === selectedSeverityFilter);
+    if (!res.ok) {
+        throw new Error("Failed to load milestones");
     }
+
+    return await res.json();
+}
+
+/* =========================
+   FETCH ISSUES
+========================= */
+async function fetchIssuesForMilestone(milestoneNumber) {
+    const res = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100`
+    );
+
+    if (!res.ok) {
+        throw new Error("Failed to load issues");
+    }
+
+    return await res.json();
+}
+
+/* =========================
+   MAIN LOAD
+========================= */
+async function fetchAndRender() {
+    try {
+        document.getElementById('milestones').innerHTML =
+            '<div class="loading">Loading...</div>';
+
+        const milestones = await fetchMilestones();
+
+        const fullData = await Promise.all(
+            milestones.map(async (m) => {
+                const issues = await fetchIssuesForMilestone(m.number);
+                return { ...m, issues };
+            })
+        );
+
+        allMilestones = fullData;
+
+        render();
+
+    } catch (err) {
+        document.getElementById('milestones').innerHTML =
+            `<div class="error">${err.message}</div>`;
+    }
+}
+
+/* =========================
+   RENDER
+========================= */
+function render() {
+    let milestones = allMilestones;
 
     if (selectedMember) {
-        issues = issues.filter(i => getName(i.assignee) === selectedMember);
+        milestones = milestones.filter(m => m.title === selectedMember);
     }
 
-    document.getElementById("stats").innerHTML = `
-        <div class="stat-box">
-            <div class="stat-number">${issues.length}</div>
-            <div class="stat-label">Issues</div>
-        </div>
-    `;
+    if (selectedSeverityFilter) {
+        milestones = milestones.filter(m =>
+            m.issues.some(i => getPriorityFromIssue(i) === selectedSeverityFilter)
+        );
+    }
 
-    const members = [...new Set(allIssues.map(i => getName(i.assignee)))];
+    // TEAM MEMBERS
+    const members = [...new Set(allMilestones.map(m => m.title))];
 
     document.getElementById("teamMembers").innerHTML = members.map(m => `
-        <div class="member-item" onclick="selectMember('${m}')">
+        <div class="member-item ${selectedMember === m ? 'active' : ''}"
+             onclick="selectMember('${m}')">
             ${m}
         </div>
     `).join("");
 
-    document.getElementById("milestones").innerHTML = issues.map(issue => `
+    // MILESTONES
+    document.getElementById("milestones").innerHTML = milestones.map(m => {
+
+        const issues = selectedSeverityFilter
+            ? m.issues.filter(i => getPriorityFromIssue(i) === selectedSeverityFilter)
+            : m.issues;
+
+        return `
         <div class="milestone-card">
             <div class="milestone-header">
-                <div class="milestone-title">${issue.title}</div>
-                <div>#${issue.number}</div>
+                <div class="milestone-title">${m.title}</div>
+                <div>#${m.number}</div>
             </div>
+
             <div class="milestone-content">
-                <p>👤 ${getName(issue.assignee)}</p>
-                <p>🏷️ ${getPriority(issue) || "No Priority"}</p>
-                <a href="${issue.html_url}" target="_blank">View</a>
+                ${issues.length === 0 ? `<p>No issues</p>` : issues.map(i => `
+                    <div class="issue-item">
+                        <strong>${i.title}</strong>
+                        <small>#${i.number}</small>
+                        <p>👤 ${getDisplayName(i.assignee)}</p>
+                        <p>🏷️ ${getPriorityFromIssue(i) || "No Priority"}</p>
+                        <a href="${i.html_url}" target="_blank">View</a>
+                    </div>
+                `).join("")}
             </div>
         </div>
-    `).join("");
+        `;
+    }).join("");
 }
 
-// ---------------- FILTERS ----------------
+/* =========================
+   FILTERS
+========================= */
 function selectMember(name) {
     selectedMember = selectedMember === name ? null : name;
     render();
 }
 
 function toggleSeverityFilter(level) {
-    selectedSeverityFilter = selectedSeverityFilter === level ? null : level;
+    selectedSeverityFilter =
+        selectedSeverityFilter === level ? null : level;
     render();
 }
 
-// ---------------- LOAD ----------------
-async function fetchAndRender() {
-    try {
-        document.getElementById("milestones").innerHTML = "Loading...";
-
-        allIssues = await fetchIssues();
-
-        console.log("ISSUES:", allIssues);
-
-        render();
-
-    } catch (err) {
-        console.error(err);
-        document.getElementById("milestones").innerHTML =
-            `<div class="error">${err.message}</div>`;
-    }
-}
-
+/* =========================
+   START
+========================= */
 window.onload = fetchAndRender;
 </script>
 </body>
