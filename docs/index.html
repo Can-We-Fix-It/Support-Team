@@ -3,14 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Team Dashboard</title>
+<title>Support Team Dashboard (Cached)</title>
 
 <style>
-* {
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
+* { margin:0; padding:0; box-sizing:border-box; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial;
@@ -19,28 +15,17 @@ body {
     padding:15px;
 }
 
-/* ===== CONTAINER ===== */
-.container {
-    max-width:1200px;
-    margin:0 auto;
-}
+.container { max-width:1200px; margin:0 auto; }
 
-/* ===== HEADER ===== */
 header {
     text-align:center;
     color:white;
     margin-bottom:25px;
 }
 
-h1 {
-    font-size:2.2em;
-}
+h1 { font-size:2.2em; }
+.subtitle { opacity:0.9; }
 
-.subtitle {
-    opacity:0.9;
-}
-
-/* ===== STATS ===== */
 .stats {
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -48,7 +33,6 @@ h1 {
     margin-bottom:15px;
 }
 
-/* ===== MONTH FILTER ===== */
 #monthFilters {
     display:flex;
     gap:10px;
@@ -66,12 +50,8 @@ h1 {
     transition:0.2s;
 }
 
-.month-btn.active {
-    background:#111;
-    color:white;
-}
+.month-btn.active { background:#111; color:white; }
 
-/* ===== STATS BOX ===== */
 .stat-box {
     background:white;
     padding:15px;
@@ -85,14 +65,12 @@ h1 {
     font-weight:bold;
 }
 
-/* ===== LAYOUT ===== */
 .main-content {
     display:grid;
     grid-template-columns:260px 1fr;
     gap:15px;
 }
 
-/* ===== TEAM LIST ===== */
 .team-members {
     background:white;
     border-radius:12px;
@@ -108,20 +86,10 @@ h1 {
     cursor:pointer;
     display:flex;
     justify-content:space-between;
-    font-size:0.9em;
-    transition:0.2s;
 }
 
-.member-item:hover {
-    background:#f5f5f5;
-}
+.member-item.active { background:#667eea; color:white; }
 
-.member-item.active {
-    background:#667eea;
-    color:white;
-}
-
-/* ===== ISSUE CARD ===== */
 .milestone-card {
     background:white;
     border-radius:12px;
@@ -135,12 +103,6 @@ h1 {
     background: linear-gradient(135deg,#667eea,#764ba2);
 }
 
-.milestone-header div:first-child {
-    font-weight:600;
-    word-break:break-word;
-}
-
-/* ===== BADGES ===== */
 .badge {
     padding:3px 8px;
     border-radius:12px;
@@ -160,23 +122,11 @@ h1 {
     font-size:0.7em;
 }
 
-/* ===== ISSUE BODY ===== */
-.issue-item {
-    padding:12px;
-}
+.issue-item { padding:12px; }
 
-.meta {
-    font-size:0.85em;
-    color:#666;
-    margin-bottom:4px;
-}
-
-/* ===== DESCRIPTION FIX ===== */
 .description-label {
     font-weight:600;
-    font-size:0.85em;
-    margin-bottom:6px;
-    color:#444;
+    margin-bottom:5px;
 }
 
 .description-text {
@@ -185,48 +135,25 @@ h1 {
     color:#222;
 }
 
-/* ===== LINK ===== */
-a {
-    color:#667eea;
-    text-decoration:none;
+.meta {
+    font-size:0.85em;
+    color:#666;
+    margin-top:4px;
 }
 
-a:hover {
-    text-decoration:underline;
+a { color:#667eea; text-decoration:none; }
+
+.refresh-btn {
+    margin-top:10px;
+    padding:8px 12px;
+    border-radius:8px;
+    border:none;
+    cursor:pointer;
+    background:white;
 }
 
-/* ===== MOBILE ===== */
-@media (max-width: 900px) {
-
-    .main-content {
-        grid-template-columns:1fr;
-    }
-
-    .team-members {
-        position:relative;
-        display:flex;
-        overflow-x:auto;
-        white-space:nowrap;
-        gap:8px;
-        padding:10px;
-    }
-
-    .member-item {
-        min-width:140px;
-        border-bottom:none;
-        border-right:1px solid #eee;
-        flex-direction:column;
-        align-items:flex-start;
-        gap:5px;
-    }
-
-    h1 {
-        font-size:1.6em;
-    }
-
-    .stats {
-        grid-template-columns:repeat(2,1fr);
-    }
+@media (max-width:900px){
+    .main-content{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -237,11 +164,11 @@ a:hover {
 
 <header>
 <h1>🎯 Support Dashboard</h1>
-<p class="subtitle">GitHub Issues Tracking</p>
+<p class="subtitle">Cached GitHub Issues (No Rate Spam)</p>
+<button class="refresh-btn" onclick="forceRefresh()">🔄 Refresh Now</button>
 </header>
 
 <div class="stats" id="stats"></div>
-
 <div id="monthFilters"></div>
 
 <div class="main-content">
@@ -256,108 +183,122 @@ a:hover {
 const OWNER = "Can-We-Fix-It";
 const REPO = "Support-Team";
 
+const CACHE_KEY = "support_dashboard_cache_v1";
+
 let allData = [];
 let selectedAgent = null;
 let selectedMonth = null;
 
-/* PRIORITY */
+/* =========================
+   CACHE SYSTEM
+========================= */
+
+function saveCache(data) {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data
+    }));
+}
+
+function loadCache() {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+
+    return JSON.parse(cached);
+}
+
+/* =========================
+   FETCH (ONLY WHEN NEEDED)
+========================= */
+
+async function fetchData(force = false) {
+
+    const cached = loadCache();
+
+    // ✅ use cache instantly if exists
+    if (cached && !force) {
+        allData = cached.data;
+        render();
+        return;
+    }
+
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
+        );
+
+        const issues = await res.json();
+        if (!Array.isArray(issues)) return;
+
+        allData = issues;
+        saveCache(issues);
+        render();
+
+    } catch (err) {
+        console.log("Error:", err);
+    }
+}
+
+/* =========================
+   MANUAL REFRESH ONLY
+========================= */
+function forceRefresh() {
+    fetchData(true);
+}
+
+/* =========================
+   LOGIC (UNCHANGED)
+========================= */
+
 function getPriority(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
-
     if (labels.includes("Severe")) return "Severe";
     if (labels.includes("Medium")) return "Medium";
     return "Low";
 }
 
-/* AGENT */
 function getAgent(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
     const priorityLabels = ["Severe", "Medium", "Low"];
-
     return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* MONTH */
 function getMonth(issue) {
     const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
     const dateLabel = labels.find(l => l.startsWith("date-"));
-
     if (!dateLabel) return "unknown";
 
     const parts = dateLabel.replace("date-", "").split("-");
-    const month = parts[1];
-
-    return month.charAt(0).toUpperCase() + month.slice(1);
+    return parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
 }
 
-/* FULL DATE */
 function getRaisedFull(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
     const dateLabel = labels.find(l => l.startsWith("date-"));
-
     if (!dateLabel) return "Not set";
 
     const parts = dateLabel.replace("date-", "").split("-");
-    const day = parts[0];
-    const month = parts[1];
-    const year = parts[2];
-
-    return `${day.charAt(0).toUpperCase() + day.slice(1)} ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
+    return `${parts[0]} ${parts[1]} ${parts[2]}`;
 }
 
-/* FETCH */
-async function fetchData() {
-    const res = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
-    );
+/* =========================
+   FILTERS
+========================= */
 
-    const issues = await res.json();
-    if (!Array.isArray(issues)) return;
-
-    allData = issues;
+function selectAgent(agent) {
+    selectedAgent = selectedAgent === agent ? null : agent;
     render();
 }
 
-/* GROUP */
-function groupByAgent(data) {
-    const map = {};
-    data.forEach(issue => {
-        const agent = getAgent(issue);
-        if (!map[agent]) map[agent] = [];
-        map[agent].push(issue);
-    });
-    return map;
+function selectMonth(month) {
+    selectedMonth = selectedMonth === month ? null : month;
+    render();
 }
 
-/* MONTH FILTER */
-function renderMonthFilters(data) {
-    const months = new Set();
+/* =========================
+   RENDER
+========================= */
 
-    data.forEach(issue => {
-        const m = getMonth(issue);
-        if (m !== "unknown") months.add(m);
-    });
-
-    let html = `
-        <div class="month-btn ${selectedMonth ? '' : 'active'}"
-             onclick="selectMonth(null)">
-            All
-        </div>
-    `;
-
-    Array.from(months).sort().forEach(month => {
-        html += `
-            <div class="month-btn ${selectedMonth === month ? 'active' : ''}"
-                 onclick="selectMonth('${month}')">
-                ${month}
-            </div>
-        `;
-    });
-
-    document.getElementById("monthFilters").innerHTML = html;
-}
-
-/* RENDER */
 function render() {
 
     let display = allData;
@@ -370,8 +311,6 @@ function render() {
         display = display.filter(i => getMonth(i) === selectedMonth);
     }
 
-    const grouped = groupByAgent(display);
-
     document.getElementById("stats").innerHTML = `
         <div class="stat-box">
             <div class="stat-number">${display.length}</div>
@@ -379,13 +318,25 @@ function render() {
         </div>
     `;
 
-    renderMonthFilters(allData);
+    const months = [...new Set(allData.map(getMonth).filter(m => m !== "unknown"))];
+
+    document.getElementById("monthFilters").innerHTML =
+        `<div class="month-btn ${!selectedMonth ? 'active' : ''}" onclick="selectMonth(null)">All</div>` +
+        months.map(m =>
+            `<div class="month-btn ${selectedMonth === m ? 'active' : ''}" onclick="selectMonth('${m}')">${m}</div>`
+        ).join("");
+
+    const grouped = {};
+    display.forEach(i => {
+        const a = getAgent(i);
+        if (!grouped[a]) grouped[a] = [];
+        grouped[a].push(i);
+    });
 
     let teamHTML = "";
-
     Object.keys(grouped).sort().forEach(agent => {
         teamHTML += `
-            <div class="member-item ${selectedAgent === agent ? "active" : ""}"
+            <div class="member-item ${selectedAgent === agent ? 'active' : ''}"
                  onclick="selectAgent('${agent}')">
                 <div>${agent}</div>
                 <div>${grouped[agent].length}</div>
@@ -401,60 +352,42 @@ function render() {
 
         const priority = getPriority(issue);
         const agent = getAgent(issue);
-
         const description = issue.body || "No description provided.";
 
         html += `
-            <div class="milestone-card">
+        <div class="milestone-card">
 
-                <div class="milestone-header">
-                    <div>#${issue.number} ${issue.title}</div>
-
-                    <div style="margin-top:8px;">
-                        <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
-                        <span class="agent-tag">${agent}</span>
-                    </div>
+            <div class="milestone-header">
+                <div>#${issue.number} ${issue.title}</div>
+                <div style="margin-top:8px;">
+                    <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
+                    <span class="agent-tag">${agent}</span>
                 </div>
+            </div>
 
-                <div class="issue-item">
+            <div class="issue-item">
 
-                    <div class="description-label">Description:</div>
-                    <div class="description-text">${description}</div>
+                <div class="description-label">Description:</div>
+                <div class="description-text">${description}</div>
 
-                    <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
-                    <div class="meta">📅 Raised: ${getRaisedFull(issue)}</div>
-                    <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
+                <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
+                <div class="meta">📅 Raised: ${getRaisedFull(issue)}</div>
+                <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
 
-                    <div class="meta" style="margin-top:10px;">
-                        <a href="${issue.html_url}" target="_blank">View on GitHub →</a>
-                    </div>
-
+                <div class="meta" style="margin-top:10px;">
+                    <a href="${issue.html_url}" target="_blank">View on GitHub →</a>
                 </div>
 
             </div>
-        `;
+
+        </div>`;
     });
 
     document.getElementById("milestones").innerHTML = html;
 }
 
-/* CONTROLS */
-function selectAgent(agent) {
-    selectedAgent = selectedAgent === agent ? null : agent;
-    render();
-}
-
-function selectMonth(month) {
-    if (selectedMonth === month) {
-        selectedMonth = null;
-    } else {
-        selectedMonth = month;
-    }
-    render();
-}
-
+/* INIT */
 fetchData();
-setInterval(fetchData, 60000);
 
 </script>
 
