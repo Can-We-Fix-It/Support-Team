@@ -19,26 +19,6 @@ body {
     padding:15px;
 }
 
-/* ===== PRINT FIX ===== */
-@media print {
-    body {
-        background: white !important;
-        padding:0;
-    }
-
-    .refresh-btn,
-    .member-item,
-    #monthFilters,
-    .team-members {
-        display:none !important;
-    }
-
-    .milestone-card {
-        break-inside: avoid;
-        margin-bottom:20px;
-    }
-}
-
 /* ===== CONTAINER ===== */
 .container {
     max-width:1200px;
@@ -52,10 +32,15 @@ header {
     margin-bottom:25px;
 }
 
-h1 { font-size:2.2em; }
-.subtitle { opacity:0.9; }
+h1 {
+    font-size:2.2em;
+}
 
-/* ===== BUTTONS ===== */
+.subtitle {
+    opacity:0.9;
+}
+
+/* ===== REFRESH BUTTON ===== */
 .refresh-btn {
     margin-top:10px;
     padding:8px 12px;
@@ -148,7 +133,9 @@ h1 { font-size:2.2em; }
     transition:0.2s;
 }
 
-.member-item:hover { background:#f5f5f5; }
+.member-item:hover {
+    background:#f5f5f5;
+}
 
 .member-item.active {
     background:#667eea;
@@ -167,6 +154,11 @@ h1 { font-size:2.2em; }
     padding:12px;
     color:white;
     background: linear-gradient(135deg,#667eea,#764ba2);
+}
+
+.milestone-header div:first-child {
+    font-weight:600;
+    word-break:break-word;
 }
 
 /* ===== BADGES ===== */
@@ -194,6 +186,7 @@ h1 { font-size:2.2em; }
     padding:12px;
 }
 
+/* DESCRIPTION FIX */
 .description-label {
     font-weight:600;
     margin-bottom:5px;
@@ -207,6 +200,7 @@ h1 { font-size:2.2em; }
     margin-bottom:10px;
 }
 
+/* ===== META ===== */
 .meta {
     font-size:0.85em;
     color:#666;
@@ -238,7 +232,9 @@ h1 { font-size:2.2em; }
         gap:5px;
     }
 
-    h1 { font-size:1.6em; }
+    h1 {
+        font-size:1.6em;
+    }
 
     .stats {
         grid-template-columns:repeat(2,1fr);
@@ -255,8 +251,9 @@ h1 { font-size:2.2em; }
 <h1>🎯 Support Dashboard</h1>
 <p class="subtitle">GitHub Issues Tracking</p>
 
-<button class="refresh-btn" onclick="forceRefresh()">🔄 Refresh Now</button>
-<button class="refresh-btn" onclick="printSelected()">🖨 Print View</button>
+<button class="refresh-btn" onclick="forceRefresh()">
+    🔄 Refresh Now
+</button>
 
 </header>
 
@@ -274,6 +271,7 @@ h1 { font-size:2.2em; }
 
 const OWNER = "Can-We-Fix-It";
 const REPO = "Support-Team";
+
 const CACHE_KEY = "support_dashboard_cache_v1";
 
 let allData = [];
@@ -291,11 +289,6 @@ function saveCache(data) {
 function loadCache() {
     const cached = localStorage.getItem(CACHE_KEY);
     return cached ? JSON.parse(cached) : null;
-}
-
-/* ===== PRINT (SAFE - DOES NOT BREAK RENDER) ===== */
-function printSelected() {
-    window.print();
 }
 
 /* ===== FETCH ===== */
@@ -339,22 +332,35 @@ function getAgent(issue) {
     return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-function getMonth(issue) {
+/* ===== HYBRID DATE SYSTEM (NEW) ===== */
+function getRaisedDate(issue) {
+
     const labels = issue.labels?.map(l => l.name) || [];
+
+    // 1. TITLE FORMAT: "4th March 2026 - bug"
+    const titleMatch = issue.title.match(/^(.+?\d{4})\s*-\s*(.*)$/);
+    if (titleMatch) {
+        return {
+            date: titleMatch[1],
+            title: titleMatch[2]
+        };
+    }
+
+    // 2. LABEL FORMAT: date-3-march-2026
     const dateLabel = labels.find(l => l.startsWith("date-"));
-    if (!dateLabel) return "unknown";
+    if (dateLabel) {
+        const parts = dateLabel.replace("date-", "").split("-");
+        return {
+            date: `${parts[0]} ${parts[1]} ${parts[2]}`,
+            title: issue.title
+        };
+    }
 
-    const parts = dateLabel.replace("date-", "").split("-");
-    return parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
-}
-
-function getRaisedFull(issue) {
-    const labels = issue.labels?.map(l => l.name) || [];
-    const dateLabel = labels.find(l => l.startsWith("date-"));
-    if (!dateLabel) return "Not set";
-
-    const parts = dateLabel.replace("date-", "").split("-");
-    return `${parts[0]} ${parts[1]} ${parts[2]}`;
+    // 3. fallback
+    return {
+        date: "Not set",
+        title: issue.title
+    };
 }
 
 /* ===== FILTERS ===== */
@@ -378,7 +384,9 @@ function render() {
     }
 
     if (selectedMonth) {
-        display = display.filter(i => getMonth(i) === selectedMonth);
+        display = display.filter(i =>
+            getRaisedDate(i).date.toLowerCase().includes(selectedMonth.toLowerCase())
+        );
     }
 
     document.getElementById("stats").innerHTML = `
@@ -388,7 +396,9 @@ function render() {
         </div>
     `;
 
-    const months = [...new Set(allData.map(getMonth).filter(m => m !== "unknown"))];
+    const months = [...new Set(allData.map(i =>
+        getRaisedDate(i).date.split(" ")[1]
+    ).filter(m => m))];
 
     document.getElementById("monthFilters").innerHTML =
         `<div class="month-btn ${!selectedMonth ? 'active' : ''}" onclick="selectMonth(null)">All</div>` +
@@ -422,13 +432,13 @@ function render() {
 
         const priority = getPriority(issue);
         const agent = getAgent(issue);
-        const description = issue.body || "No description provided.";
+        const parsed = getRaisedDate(issue);
 
         html += `
         <div class="milestone-card">
 
             <div class="milestone-header">
-                <div>#${issue.number} ${issue.title}</div>
+                <div>#${issue.number} ${parsed.title}</div>
                 <div style="margin-top:8px;">
                     <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
                     <span class="agent-tag">${agent}</span>
@@ -438,10 +448,10 @@ function render() {
             <div class="issue-item">
 
                 <div class="description-label">Description:</div>
-                <div class="description-text">${description}</div>
+                <div class="description-text">${issue.body || "No description provided."}</div>
 
                 <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
-                <div class="meta">📅 Raised: ${getRaisedFull(issue)}</div>
+                <div class="meta">📅 Raised: ${parsed.date}</div>
                 <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
 
             </div>
