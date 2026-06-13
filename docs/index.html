@@ -168,6 +168,21 @@ h1 {
 .meta {
     font-size:0.85em;
     color:#666;
+    margin-bottom:4px;
+}
+
+/* ===== DESCRIPTION FIX ===== */
+.description-label {
+    font-weight:600;
+    font-size:0.85em;
+    margin-bottom:6px;
+    color:#444;
+}
+
+.description-text {
+    white-space:pre-wrap;
+    line-height:1.5;
+    color:#222;
 }
 
 /* ===== LINK ===== */
@@ -262,7 +277,7 @@ function getAgent(issue) {
     return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* MONTH FILTER VALUE (for grouping only) */
+/* MONTH */
 function getMonth(issue) {
     const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
     const dateLabel = labels.find(l => l.startsWith("date-"));
@@ -270,15 +285,12 @@ function getMonth(issue) {
     if (!dateLabel) return "unknown";
 
     const parts = dateLabel.replace("date-", "").split("-");
-
-    if (parts.length < 3) return "unknown";
-
     const month = parts[1];
 
     return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
-/* FULL RAISED DATE (DISPLAY ONLY) */
+/* FULL DATE */
 function getRaisedFull(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
     const dateLabel = labels.find(l => l.startsWith("date-"));
@@ -286,9 +298,6 @@ function getRaisedFull(issue) {
     if (!dateLabel) return "Not set";
 
     const parts = dateLabel.replace("date-", "").split("-");
-
-    if (parts.length < 3) return "Not set";
-
     const day = parts[0];
     const month = parts[1];
     const year = parts[2];
@@ -312,19 +321,16 @@ async function fetchData() {
 /* GROUP */
 function groupByAgent(data) {
     const map = {};
-
     data.forEach(issue => {
         const agent = getAgent(issue);
         if (!map[agent]) map[agent] = [];
         map[agent].push(issue);
     });
-
     return map;
 }
 
-/* MONTH FILTER UI */
+/* MONTH FILTER */
 function renderMonthFilters(data) {
-
     const months = new Set();
 
     data.forEach(issue => {
@@ -378,7 +384,6 @@ function render() {
     let teamHTML = "";
 
     Object.keys(grouped).sort().forEach(agent => {
-
         teamHTML += `
             <div class="member-item ${selectedAgent === agent ? "active" : ""}"
                  onclick="selectAgent('${agent}')">
@@ -397,34 +402,27 @@ function render() {
         const priority = getPriority(issue);
         const agent = getAgent(issue);
 
-        const description = issue.body
-            ? issue.body.substring(0, 400)
-            : "No description provided.";
+        const description = issue.body || "No description provided.";
 
         html += `
             <div class="milestone-card">
 
                 <div class="milestone-header">
-
                     <div>#${issue.number} ${issue.title}</div>
 
                     <div style="margin-top:8px;">
                         <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
                         <span class="agent-tag">${agent}</span>
                     </div>
-
                 </div>
 
                 <div class="issue-item">
 
-                    <div style="background:#f8f9fa;padding:12px;border-radius:8px;margin-bottom:12px;border-left:4px solid #667eea;white-space:pre-wrap;">
-                        ${description}
-                    </div>
+                    <div class="description-label">Description:</div>
+                    <div class="description-text">${description}</div>
 
                     <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
-
                     <div class="meta">📅 Raised: ${getRaisedFull(issue)}</div>
-
                     <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
 
                     <div class="meta" style="margin-top:10px;">
@@ -440,13 +438,12 @@ function render() {
     document.getElementById("milestones").innerHTML = html;
 }
 
-/* TOGGLES */
+/* CONTROLS */
 function selectAgent(agent) {
     selectedAgent = selectedAgent === agent ? null : agent;
     render();
 }
 
-/* ✅ FIXED TOGGLE */
 function selectMonth(month) {
     if (selectedMonth === month) {
         selectedMonth = null;
