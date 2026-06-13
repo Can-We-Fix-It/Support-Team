@@ -260,7 +260,7 @@ function getDate(issue){
     return match?match[1]:"Not set";
 }
 
-/* PRIORITY FIXED */
+/* PRIORITY */
 function getPriority(issue){
     const l=(issue.labels||[]).map(x=>x.name.toLowerCase());
 
@@ -320,10 +320,24 @@ function render(){
             <div>Total Issues</div>
         </div>`;
 
-    /* MONTHS */
-    let months=[...new Set(allData.map(getDate).map(d=>d.split(" ")[1]))]
+    /* =========================
+       ✅ FIXED MONTH SORTING
+       ========================= */
+
+    const MONTH_ORDER = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+    ];
+
+    function extractMonth(issue){
+        const d=getDate(issue);
+        const parts=d.split(" ");
+        return parts[1] || null;
+    }
+
+    let months=[...new Set(allData.map(extractMonth))]
         .filter(Boolean)
-        .sort((a,b)=>a.localeCompare(b));
+        .sort((a,b)=> MONTH_ORDER.indexOf(a)-MONTH_ORDER.indexOf(b));
 
     document.getElementById("monthFilters").innerHTML=
         `<div class="filter-btn ${!selectedMonth?'active':''}" onclick="toggleMonth(null)">All Months</div>`+
