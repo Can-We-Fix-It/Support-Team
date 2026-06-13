@@ -262,10 +262,9 @@ function getAgent(issue) {
     return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* ✅ MONTH FOR FILTERING ONLY */
+/* MONTH FILTER VALUE (for grouping only) */
 function getMonth(issue) {
     const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
-
     const dateLabel = labels.find(l => l.startsWith("date-"));
 
     if (!dateLabel) return "unknown";
@@ -279,10 +278,9 @@ function getMonth(issue) {
     return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
-/* ✅ FULL RAISED DATE (DISPLAY ONLY) */
+/* FULL RAISED DATE (DISPLAY ONLY) */
 function getRaisedFull(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
-
     const dateLabel = labels.find(l => l.startsWith("date-"));
 
     if (!dateLabel) return "Not set";
@@ -317,9 +315,7 @@ function groupByAgent(data) {
 
     data.forEach(issue => {
         const agent = getAgent(issue);
-
         if (!map[agent]) map[agent] = [];
-
         map[agent].push(issue);
     });
 
@@ -344,7 +340,6 @@ function renderMonthFilters(data) {
     `;
 
     Array.from(months).sort().forEach(month => {
-
         html += `
             <div class="month-btn ${selectedMonth === month ? 'active' : ''}"
                  onclick="selectMonth('${month}')">
@@ -445,14 +440,19 @@ function render() {
     document.getElementById("milestones").innerHTML = html;
 }
 
-/* CONTROLS */
+/* TOGGLES */
 function selectAgent(agent) {
     selectedAgent = selectedAgent === agent ? null : agent;
     render();
 }
 
+/* ✅ FIXED TOGGLE */
 function selectMonth(month) {
-    selectedMonth = month;
+    if (selectedMonth === month) {
+        selectedMonth = null;
+    } else {
+        selectedMonth = month;
+    }
     render();
 }
 
