@@ -19,11 +19,33 @@ body {
     padding:15px;
 }
 
+/* ===== PRINT FIX ===== */
+@media print {
+    body {
+        background: white !important;
+        padding:0;
+    }
+
+    .refresh-btn,
+    .member-item,
+    #monthFilters,
+    .team-members {
+        display:none !important;
+    }
+
+    .milestone-card {
+        break-inside: avoid;
+        margin-bottom:20px;
+    }
+}
+
+/* ===== CONTAINER ===== */
 .container {
     max-width:1200px;
     margin:0 auto;
 }
 
+/* ===== HEADER ===== */
 header {
     text-align:center;
     color:white;
@@ -33,6 +55,7 @@ header {
 h1 { font-size:2.2em; }
 .subtitle { opacity:0.9; }
 
+/* ===== BUTTONS ===== */
 .refresh-btn {
     margin-top:10px;
     padding:8px 12px;
@@ -41,8 +64,14 @@ h1 { font-size:2.2em; }
     cursor:pointer;
     background:white;
     font-weight:500;
+    transition:0.2s;
 }
 
+.refresh-btn:hover {
+    transform:scale(1.03);
+}
+
+/* ===== STATS ===== */
 .stats {
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -50,6 +79,7 @@ h1 { font-size:2.2em; }
     margin-bottom:15px;
 }
 
+/* ===== MONTH FILTER ===== */
 #monthFilters {
     display:flex;
     gap:10px;
@@ -62,7 +92,9 @@ h1 { font-size:2.2em; }
     border-radius:8px;
     cursor:pointer;
     background:white;
+    color:black;
     font-size:13px;
+    transition:0.2s;
 }
 
 .month-btn.active {
@@ -70,6 +102,7 @@ h1 { font-size:2.2em; }
     color:white;
 }
 
+/* ===== STATS BOX ===== */
 .stat-box {
     background:white;
     padding:15px;
@@ -83,12 +116,14 @@ h1 { font-size:2.2em; }
     font-weight:bold;
 }
 
+/* ===== LAYOUT ===== */
 .main-content {
     display:grid;
     grid-template-columns:260px 1fr;
     gap:15px;
 }
 
+/* ===== TEAM LIST ===== */
 .team-members {
     background:white;
     border-radius:12px;
@@ -97,7 +132,10 @@ h1 { font-size:2.2em; }
 }
 
 @media (min-width: 901px) {
-    .team-members { position:sticky; top:10px; }
+    .team-members {
+        position: sticky;
+        top: 10px;
+    }
 }
 
 .member-item {
@@ -106,13 +144,18 @@ h1 { font-size:2.2em; }
     cursor:pointer;
     display:flex;
     justify-content:space-between;
+    font-size:0.9em;
+    transition:0.2s;
 }
+
+.member-item:hover { background:#f5f5f5; }
 
 .member-item.active {
     background:#667eea;
     color:white;
 }
 
+/* ===== ISSUE CARD ===== */
 .milestone-card {
     background:white;
     border-radius:12px;
@@ -126,10 +169,12 @@ h1 { font-size:2.2em; }
     background: linear-gradient(135deg,#667eea,#764ba2);
 }
 
+/* ===== BADGES ===== */
 .badge {
     padding:3px 8px;
     border-radius:12px;
     font-size:0.7em;
+    margin-right:5px;
 }
 
 .priority-low { background:#44aa44; color:white; }
@@ -144,22 +189,60 @@ h1 { font-size:2.2em; }
     font-size:0.7em;
 }
 
-.issue-item { padding:12px; }
+/* ===== ISSUE BODY ===== */
+.issue-item {
+    padding:12px;
+}
 
 .description-label {
     font-weight:600;
     margin-bottom:5px;
+    color:#333;
 }
 
 .description-text {
     white-space:pre-wrap;
     line-height:1.5;
+    color:#222;
+    margin-bottom:10px;
 }
 
 .meta {
     font-size:0.85em;
     color:#666;
     margin-top:4px;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 900px) {
+
+    .main-content {
+        grid-template-columns:1fr;
+    }
+
+    .team-members {
+        position:relative;
+        display:flex;
+        overflow-x:auto;
+        white-space:nowrap;
+        gap:8px;
+        padding:10px;
+    }
+
+    .member-item {
+        min-width:140px;
+        border-bottom:none;
+        border-right:1px solid #eee;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:5px;
+    }
+
+    h1 { font-size:1.6em; }
+
+    .stats {
+        grid-template-columns:repeat(2,1fr);
+    }
 }
 </style>
 </head>
@@ -172,7 +255,8 @@ h1 { font-size:2.2em; }
 <h1>🎯 Support Dashboard</h1>
 <p class="subtitle">GitHub Issues Tracking</p>
 
-<button class="refresh-btn" onclick="forceRefresh()">🔄 Refresh</button>
+<button class="refresh-btn" onclick="forceRefresh()">🔄 Refresh Now</button>
+<button class="refresh-btn" onclick="printSelected()">🖨 Print View</button>
 
 </header>
 
@@ -196,25 +280,30 @@ let allData = [];
 let selectedAgent = null;
 let selectedMonth = null;
 
-/* ================= CACHE ================= */
-function saveCache(data){
+/* ===== CACHE ===== */
+function saveCache(data) {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
-        time: Date.now(),
+        timestamp: Date.now(),
         data
     }));
 }
 
-function loadCache(){
-    const c = localStorage.getItem(CACHE_KEY);
-    return c ? JSON.parse(c) : null;
+function loadCache() {
+    const cached = localStorage.getItem(CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
 }
 
-/* ================= FETCH ================= */
-async function fetchData(force=false){
+/* ===== PRINT (SAFE - DOES NOT BREAK RENDER) ===== */
+function printSelected() {
+    window.print();
+}
+
+/* ===== FETCH ===== */
+async function fetchData(force = false) {
 
     const cached = loadCache();
 
-    if(cached && !force){
+    if (cached && !force) {
         allData = cached.data;
         render();
         return;
@@ -225,86 +314,71 @@ async function fetchData(force=false){
     );
 
     const issues = await res.json();
-    if(!Array.isArray(issues)) return;
+    if (!Array.isArray(issues)) return;
 
     allData = issues;
     saveCache(issues);
     render();
 }
 
-function forceRefresh(){
+function forceRefresh() {
     fetchData(true);
 }
 
-/* ================= PRIORITY ================= */
-function getPriority(issue){
+/* ===== LOGIC ===== */
+function getPriority(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
-    if(labels.includes("Severe")) return "Severe";
-    if(labels.includes("Medium")) return "Medium";
+    if (labels.includes("Severe")) return "Severe";
+    if (labels.includes("Medium")) return "Medium";
     return "Low";
 }
 
-/* ================= AGENT ================= */
-function getAgent(issue){
+function getAgent(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
-    const ignore = ["Severe","Medium","Low"];
-    return labels.find(l => !ignore.includes(l)) || "Unassigned";
+    const priorityLabels = ["Severe", "Medium", "Low"];
+    return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* ================= DATE (HYBRID FIXED) ================= */
-function getRaisedDate(issue){
-
+function getMonth(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
-
-    // 1) TITLE FORMAT: "3rd March 2026 - bug"
-    const match = issue.title.match(/^(.+?\d{4})\s*-\s*(.*)$/);
-    if(match){
-        return {
-            date: match[1],
-            cleanTitle: match[2]
-        };
-    }
-
-    // 2) LABEL FORMAT: date-3-march-2026
     const dateLabel = labels.find(l => l.startsWith("date-"));
-    if(dateLabel){
-        const parts = dateLabel.replace("date-","").split("-");
-        return {
-            date: `${parts[0]} ${parts[1]} ${parts[2]}`,
-            cleanTitle: issue.title
-        };
-    }
+    if (!dateLabel) return "unknown";
 
-    return {
-        date: "Not set",
-        cleanTitle: issue.title
-    };
+    const parts = dateLabel.replace("date-", "").split("-");
+    return parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
 }
 
-/* ================= FILTERS ================= */
-function selectAgent(a){
-    selectedAgent = selectedAgent === a ? null : a;
+function getRaisedFull(issue) {
+    const labels = issue.labels?.map(l => l.name) || [];
+    const dateLabel = labels.find(l => l.startsWith("date-"));
+    if (!dateLabel) return "Not set";
+
+    const parts = dateLabel.replace("date-", "").split("-");
+    return `${parts[0]} ${parts[1]} ${parts[2]}`;
+}
+
+/* ===== FILTERS ===== */
+function selectAgent(agent) {
+    selectedAgent = selectedAgent === agent ? null : agent;
     render();
 }
 
-function selectMonth(m){
-    selectedMonth = selectedMonth === m ? null : m;
+function selectMonth(month) {
+    selectedMonth = selectedMonth === month ? null : month;
     render();
 }
 
-/* ================= RENDER ================= */
-function render(){
+/* ===== RENDER ===== */
+function render() {
 
     let display = allData;
 
-    if(selectedAgent){
+    if (selectedAgent) {
         display = display.filter(i => getAgent(i) === selectedAgent);
     }
 
-    if(selectedMonth){
-        display = display.filter(i =>
-            getRaisedDate(i).date.toLowerCase().includes(selectedMonth.toLowerCase())
-        );
+    if (selectedMonth) {
+        display = display.filter(i => getMonth(i) === selectedMonth);
     }
 
     document.getElementById("stats").innerHTML = `
@@ -314,38 +388,47 @@ function render(){
         </div>
     `;
 
+    const months = [...new Set(allData.map(getMonth).filter(m => m !== "unknown"))];
+
+    document.getElementById("monthFilters").innerHTML =
+        `<div class="month-btn ${!selectedMonth ? 'active' : ''}" onclick="selectMonth(null)">All</div>` +
+        months.map(m =>
+            `<div class="month-btn ${selectedMonth === m ? 'active' : ''}" onclick="selectMonth('${m}')">${m}</div>`
+        ).join("");
+
     const grouped = {};
-    display.forEach(i=>{
+    display.forEach(i => {
         const a = getAgent(i);
         grouped[a] = grouped[a] || [];
         grouped[a].push(i);
     });
 
     let teamHTML = "";
-    Object.keys(grouped).forEach(a=>{
+    Object.keys(grouped).sort().forEach(agent => {
         teamHTML += `
-        <div class="member-item ${selectedAgent===a?'active':''}"
-             onclick="selectAgent('${a}')">
-            <div>${a}</div>
-            <div>${grouped[a].length}</div>
-        </div>`;
+            <div class="member-item ${selectedAgent === agent ? 'active' : ''}"
+                 onclick="selectAgent('${agent}')">
+                <div>${agent}</div>
+                <div>${grouped[agent].length}</div>
+            </div>
+        `;
     });
 
     document.getElementById("teamMembers").innerHTML = teamHTML;
 
     let html = "";
 
-    display.forEach(issue=>{
+    display.forEach(issue => {
 
         const priority = getPriority(issue);
         const agent = getAgent(issue);
-        const parsed = getRaisedDate(issue);
+        const description = issue.body || "No description provided.";
 
         html += `
         <div class="milestone-card">
 
             <div class="milestone-header">
-                <div>#${issue.number} ${parsed.cleanTitle}</div>
+                <div>#${issue.number} ${issue.title}</div>
                 <div style="margin-top:8px;">
                     <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
                     <span class="agent-tag">${agent}</span>
@@ -355,13 +438,14 @@ function render(){
             <div class="issue-item">
 
                 <div class="description-label">Description:</div>
-                <div class="description-text">${issue.body || "No description"}</div>
+                <div class="description-text">${description}</div>
 
-                <div class="meta">📅 Raised: ${parsed.date}</div>
                 <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
+                <div class="meta">📅 Raised: ${getRaisedFull(issue)}</div>
                 <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
 
             </div>
+
         </div>`;
     });
 
