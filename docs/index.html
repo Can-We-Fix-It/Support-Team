@@ -296,8 +296,81 @@ function togglePriority(p){
 }
 
 /* PRINT */
-function printPage(){
-    window.print();
+function printPage() {
+    const data = [...allData];
+
+    const selectedData = data
+        .filter(i => !selectedAgent || getAgent(i) === selectedAgent)
+        .filter(i => !selectedPriority || getPriority(i) === selectedPriority)
+        .filter(i => !selectedMonth || getDate(i).includes(selectedMonth));
+
+    const printWindow = window.open("", "_blank");
+
+    printWindow.document.write(`
+        <html>
+        <head>
+        <title>Print Issues</title>
+        <style>
+            body {
+                font-family: Arial;
+                padding: 20px;
+            }
+            .card {
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            .title {
+                font-weight: bold;
+                margin-bottom: 6px;
+            }
+            .meta {
+                font-size: 12px;
+                color: #666;
+                margin-top: 4px;
+            }
+            .badge {
+                display:inline-block;
+                padding:3px 8px;
+                border-radius:10px;
+                font-size:11px;
+                margin-right:5px;
+            }
+            .High { background:#e74c3c; color:white; }
+            .Medium { background:#f39c12; color:white; }
+            .Low { background:#27ae60; color:white; }
+            .Severe { background:#8e44ad; color:white; }
+        </style>
+        </head>
+        <body>
+
+        ${selectedData.map(issue => `
+            <div class="card">
+                <div class="title">#${issue.number} ${cleanTitle(issue.title)}</div>
+
+                <div>
+                    <span class="badge ${getPriority(issue)}">${getPriority(issue)}</span>
+                    <span class="badge">${getAgent(issue)}</span>
+                </div>
+
+                <div class="meta">
+                    📅 Raised: ${getDate(issue)}
+                </div>
+
+                <div class="meta" style="margin-top:8px;">
+                    ${issue.body || "No description"}
+                </div>
+            </div>
+        `).join("")}
+
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
 }
 
 /* RENDER */
