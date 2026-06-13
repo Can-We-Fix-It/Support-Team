@@ -227,7 +227,6 @@ a:hover {
 
 <div class="stats" id="stats"></div>
 
-<!-- MONTH FILTER -->
 <div id="monthFilters"></div>
 
 <div class="main-content">
@@ -252,8 +251,6 @@ function getPriority(issue) {
 
     if (labels.includes("Severe")) return "Severe";
     if (labels.includes("Medium")) return "Medium";
-    if (labels.includes("Low")) return "Low";
-
     return "Low";
 }
 
@@ -265,18 +262,34 @@ function getAgent(issue) {
     return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* DATE LABEL → MONTH */
+/* ✅ MONTH FOR FILTERING ONLY */
 function getMonth(issue) {
-    const labels = issue.labels?.map(l => l.name) || [];
+    const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
 
     const dateLabel = labels.find(l => l.startsWith("date-"));
 
     if (!dateLabel) return "unknown";
 
-    // date-3-march-2026
     const parts = dateLabel.replace("date-", "").split("-");
 
     if (parts.length < 3) return "unknown";
+
+    const month = parts[1];
+
+    return month.charAt(0).toUpperCase() + month.slice(1);
+}
+
+/* ✅ FULL RAISED DATE (DISPLAY ONLY) */
+function getRaisedFull(issue) {
+    const labels = issue.labels?.map(l => l.name) || [];
+
+    const dateLabel = labels.find(l => l.startsWith("date-"));
+
+    if (!dateLabel) return "Not set";
+
+    const parts = dateLabel.replace("date-", "").split("-");
+
+    if (parts.length < 3) return "Not set";
 
     const day = parts[0];
     const month = parts[1];
@@ -287,21 +300,15 @@ function getMonth(issue) {
 
 /* FETCH */
 async function fetchData() {
-    try {
-        const res = await fetch(
-            `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
-        );
+    const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
+    );
 
-        const issues = await res.json();
+    const issues = await res.json();
+    if (!Array.isArray(issues)) return;
 
-        if (!Array.isArray(issues)) return;
-
-        allData = issues;
-        render();
-
-    } catch (err) {
-        console.log("Error:", err);
-    }
+    allData = issues;
+    render();
 }
 
 /* GROUP */
@@ -352,11 +359,21 @@ function renderMonthFilters(data) {
 /* RENDER */
 function render() {
 
-    const grouped = groupByAgent(allData);
+    let display = allData;
+
+    if (selectedAgent) {
+        display = display.filter(i => getAgent(i) === selectedAgent);
+    }
+
+    if (selectedMonth) {
+        display = display.filter(i => getMonth(i) === selectedMonth);
+    }
+
+    const grouped = groupByAgent(display);
 
     document.getElementById("stats").innerHTML = `
         <div class="stat-box">
-            <div class="stat-number">${allData.length}</div>
+            <div class="stat-number">${display.length}</div>
             <div>Total Issues</div>
         </div>
     `;
@@ -365,28 +382,18 @@ function render() {
 
     let teamHTML = "";
 
-    Object.keys(grouped)
-        .sort()
-        .forEach(agent => {
+    Object.keys(grouped).sort().forEach(agent => {
 
-            teamHTML += `
-                <div class="member-item ${selectedAgent === agent ? "active" : ""}"
-                     onclick="selectAgent('${agent}')">
-
-                    <div>${agent}</div>
-                    <div>${grouped[agent].length}</div>
-
-                </div>
-            `;
-        });
+        teamHTML += `
+            <div class="member-item ${selectedAgent === agent ? "active" : ""}"
+                 onclick="selectAgent('${agent}')">
+                <div>${agent}</div>
+                <div>${grouped[agent].length}</div>
+            </div>
+        `;
+    });
 
     document.getElementById("teamMembers").innerHTML = teamHTML;
-
-    let display = selectedAgent ? grouped[selectedAgent] : allData;
-
-    if (selectedMonth) {
-        display = display.filter(issue => getMonth(issue) === selectedMonth);
-    }
 
     let html = "";
 
@@ -394,7 +401,6 @@ function render() {
 
         const priority = getPriority(issue);
         const agent = getAgent(issue);
-        const month = getMonth(issue);
 
         const description = issue.body
             ? issue.body.substring(0, 400)
@@ -408,13 +414,8 @@ function render() {
                     <div>#${issue.number} ${issue.title}</div>
 
                     <div style="margin-top:8px;">
-                        <span class="badge priority-${priority.toLowerCase()}">
-                            ${priority}
-                        </span>
-
-                        <span class="agent-tag">
-                            ${agent}
-                        </span>
+                        <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
+                        <span class="agent-tag">${agent}</span>
                     </div>
 
                 </div>
@@ -425,17 +426,11 @@ function render() {
                         ${description}
                     </div>
 
-                    <div class="meta">
-                        Created: ${new Date(issue.created_at).toLocaleDateString()}
-                    </div>
+                    <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
 
-                    <div class="meta">
-                        📅 Raised: ${month}
-                    </div>
+                    <div class="meta">📅 Raised: ${getRaisedFull(issue)}</div>
 
-                    <div class="meta">
-                        Updated: ${new Date(issue.updated_at).toLocaleDateString()}
-                    </div>
+                    <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
 
                     <div class="meta" style="margin-top:10px;">
                         <a href="${issue.html_url}" target="_blank">View on GitHub →</a>
