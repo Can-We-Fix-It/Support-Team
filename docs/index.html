@@ -24,22 +24,20 @@ body {
     margin:0 auto;
 }
 
-/* HEADER */
 header {
     text-align:center;
     color:white;
-    margin-bottom:15px;
+    margin-bottom:20px;
 }
 
 h1 { font-size:2.2em; }
 .subtitle { opacity:0.9; }
 
-/* ACTIONS */
-.header-actions {
+.controls {
     display:flex;
     justify-content:center;
     gap:10px;
-    margin-top:10px;
+    margin-bottom:15px;
 }
 
 button {
@@ -48,10 +46,8 @@ button {
     border:none;
     cursor:pointer;
     background:white;
-    font-weight:500;
 }
 
-/* STATS */
 .stats {
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -72,20 +68,19 @@ button {
     font-weight:bold;
 }
 
-/* FILTERS */
-.filter-row {
+#monthFilters, #priorityFilters {
     display:flex;
-    flex-wrap:wrap;
     gap:10px;
+    flex-wrap:wrap;
     margin-bottom:15px;
 }
 
 .filter-btn {
-    background:white;
     padding:8px 12px;
-    border-radius:12px;
-    font-size:13px;
+    border-radius:8px;
     cursor:pointer;
+    background:white;
+    font-size:13px;
 }
 
 .filter-btn.active {
@@ -93,7 +88,44 @@ button {
     color:white;
 }
 
-/* CARD */
+.main-content {
+    display:grid;
+    grid-template-columns:260px 1fr;
+    gap:15px;
+}
+
+.team-members {
+    background:white;
+    border-radius:12px;
+    padding:8px;
+    height:fit-content;
+}
+
+@media (min-width: 901px) {
+    .team-members {
+        position: sticky;
+        top: 10px;
+    }
+}
+
+.member-item {
+    padding:10px;
+    border-bottom:1px solid #eee;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    font-size:0.9em;
+}
+
+.member-item:hover {
+    background:#f5f5f5;
+}
+
+.member-item.active {
+    background:#667eea;
+    color:white;
+}
+
 .milestone-card {
     background:white;
     border-radius:12px;
@@ -107,35 +139,9 @@ button {
     background: linear-gradient(135deg,#667eea,#764ba2);
 }
 
-.badge {
-    padding:3px 8px;
-    border-radius:12px;
-    font-size:0.7em;
-    margin-right:5px;
-}
-
-.priority-low { background:#44aa44; color:white; }
-.priority-medium { background:#ffaa00; color:white; }
-.priority-high { background:#ff8800; color:white; }
-.priority-severe { background:#ff4444; color:white; }
-
-.agent-tag {
-    background:#111;
-    color:white;
-    padding:3px 8px;
-    border-radius:12px;
-    font-size:0.7em;
-}
-
-/* DESCRIPTION (clean like you wanted) */
-.issue-item {
-    padding:12px;
-}
-
 .description-label {
     font-weight:600;
     margin-bottom:5px;
-    color:#333;
 }
 
 .description-text {
@@ -144,22 +150,40 @@ button {
     color:#222;
 }
 
-/* META ONLY FOR RAISED DATE */
 .meta {
     font-size:0.85em;
     color:#666;
-    margin-top:6px;
+    margin-top:4px;
 }
 
-/* PRINT */
+.badge {
+    padding:3px 8px;
+    border-radius:12px;
+    font-size:0.7em;
+}
+
+.priority-low { background:#44aa44; color:white; }
+.priority-medium { background:#ffaa00; color:white; }
+.priority-high { background:#ff8800; color:white; }
+.priority-severe { background:#ff4444; color:white; }
+
 @media print {
-    .filter-row,
-    .header-actions {
+    body {
+        background:white;
+        padding:0;
+    }
+
+    header,
+    .controls,
+    #monthFilters,
+    #priorityFilters,
+    .stats,
+    .team-members {
         display:none !important;
     }
 
-    body {
-        background:white;
+    .milestone-card {
+        break-inside: avoid;
     }
 }
 </style>
@@ -172,21 +196,22 @@ button {
 <header>
 <h1>🎯 Support Dashboard</h1>
 <p class="subtitle">GitHub Issues Tracking</p>
-
-<div class="header-actions">
-    <button onclick="forceRefresh()">🔄 Refresh</button>
-    <button onclick="window.print()">🖨️ Print</button>
-</div>
-
 </header>
+
+<div class="controls">
+    <button onclick="window.print()">🖨 Print</button>
+    <button onclick="forceRefresh()">🔄 Refresh</button>
+</div>
 
 <div class="stats" id="stats"></div>
 
-<div id="monthFilters" class="filter-row"></div>
-<div id="priorityFilters" class="filter-row"></div>
-<div id="agentFilters" class="filter-row"></div>
+<div id="monthFilters"></div>
+<div id="priorityFilters"></div>
 
-<div id="milestones"></div>
+<div class="main-content">
+    <div class="team-members" id="teamMembers"></div>
+    <div id="milestones"></div>
+</div>
 
 </div>
 
@@ -194,61 +219,110 @@ button {
 
 const OWNER = "Can-We-Fix-It";
 const REPO = "Support-Team";
+const CACHE_KEY = "dash_v1_fix";
 
 let allData = [];
 let selectedMonth = null;
 let selectedPriority = null;
 let selectedAgent = null;
 
-/* PRIORITY */
-function getPriority(issue) {
-    const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
-    if (labels.includes("severe")) return "Severe";
-    if (labels.includes("high")) return "High";
-    if (labels.includes("medium")) return "Medium";
-    return "Low";
+/* CACHE */
+function saveCache(data){
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
 }
-
-/* AGENT */
-function getAgent(issue) {
-    const labels = issue.labels?.map(l => l.name) || [];
-    const reserved = ["Severe","High","Medium","Low"];
-    return labels.find(l => !reserved.includes(l)) || "Unassigned";
+function loadCache(){
+    const c = localStorage.getItem(CACHE_KEY);
+    return c ? JSON.parse(c) : null;
 }
-
-/* DATE FROM TITLE */
-function extractDate(issue) {
-    const match = issue.title.match(/(\d{1,2})(st|nd|rd|th)?\s([A-Za-z]+)\s(\d{4})/);
-    if (!match) return "Not set";
-    return `${match[0]}`;
-}
-
-/* FILTERS */
-function toggleMonth(m){ selectedMonth = selectedMonth===m?null:m; render(); }
-function togglePriority(p){ selectedPriority = selectedPriority===p?null:p; render(); }
-function toggleAgent(a){ selectedAgent = selectedAgent===a?null:a; render(); }
 
 /* FETCH */
-async function fetchData() {
+async function fetchData(force=false){
+
+    const cached = loadCache();
+
+    if(cached && !force){
+        allData = cached;
+        render();
+        return;
+    }
+
     const res = await fetch(
         `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
     );
 
     const data = await res.json();
-    if (!Array.isArray(data)) return;
-
     allData = data;
+    saveCache(data);
     render();
 }
 
+/* DATE PARSE */
+function extractDate(title){
+    const regex = /(\d{1,2})(st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})/;
+    const m = title.match(regex);
+
+    if(!m) return null;
+
+    return {
+        full: `${m[1]} ${m[3]} ${m[4]}`,
+        month: m[3],
+        cleanTitle: title.replace(regex,'').trim()
+    };
+}
+
+/* FILTER TOGGLE FIXED */
+function toggleMonth(m){
+    selectedMonth = (selectedMonth === m) ? null : m;
+    render();
+}
+
+function togglePriority(p){
+    selectedPriority = (selectedPriority === p) ? null : p;
+    render();
+}
+
+function toggleAgent(a){
+    selectedAgent = (selectedAgent === a) ? null : a;
+    render();
+}
+
+/* LOGIC */
+function getPriority(issue){
+    const labels = issue.labels?.map(l=>l.name.toLowerCase()) || [];
+
+    if(labels.includes("severe")) return "Severe";
+    if(labels.includes("high")) return "High";
+    if(labels.includes("medium")) return "Medium";
+    return "Low";
+}
+
+function getAgent(issue){
+    const labels = issue.labels?.map(l=>l.name) || [];
+    const skip = ["Severe","High","Medium","Low"];
+    return labels.find(l => !skip.includes(l)) || "Unassigned";
+}
+
+function getMonth(issue){
+    const d = extractDate(issue.title);
+    return d ? d.month : "unknown";
+}
+
 /* RENDER */
-function render() {
+function render(){
 
     let data = allData;
 
-    if (selectedMonth) data = data.filter(i => i.title.toLowerCase().includes(selectedMonth));
-    if (selectedPriority) data = data.filter(i => getPriority(i) === selectedPriority);
-    if (selectedAgent) data = data.filter(i => getAgent(i) === selectedAgent);
+    if(selectedAgent){
+        data = data.filter(i => getAgent(i) === selectedAgent);
+    }
+
+    if(selectedMonth){
+        data = data.filter(i => getMonth(i) === selectedMonth);
+    }
+
+    if(selectedPriority){
+        data = data.filter(i => getPriority(i) === selectedPriority);
+    }
 
     document.getElementById("stats").innerHTML = `
         <div class="stat-box">
@@ -257,59 +331,66 @@ function render() {
         </div>
     `;
 
-    const months = [...new Set(allData.map(i => {
-        const m = i.title.match(/[A-Za-z]+/g);
-        return m ? m[0].toLowerCase() : null;
-    }).filter(Boolean))];
+    /* MONTHS */
+    const months = [...new Set(allData.map(getMonth).filter(m=>m!=="unknown"))];
 
     document.getElementById("monthFilters").innerHTML =
-        `<div class="filter-btn ${!selectedMonth?'active':''}" onclick="toggleMonth(null)">All Months</div>` +
-        months.map(m =>
+        `<div class="filter-btn ${!selectedMonth?'active':''}" onclick="toggleMonth(null)">All Months</div>`
+        + months.map(m =>
             `<div class="filter-btn ${selectedMonth===m?'active':''}" onclick="toggleMonth('${m}')">${m}</div>`
         ).join("");
 
+    /* PRIORITY */
     const priorities = ["Low","Medium","High","Severe"];
 
     document.getElementById("priorityFilters").innerHTML =
-        `<div class="filter-btn ${!selectedPriority?'active':''}" onclick="togglePriority(null)">All Priority</div>` +
-        priorities.map(p =>
+        `<div class="filter-btn ${!selectedPriority?'active':''}" onclick="togglePriority(null)">All Priority</div>`
+        + priorities.map(p =>
             `<div class="filter-btn ${selectedPriority===p?'active':''}" onclick="togglePriority('${p}')">${p}</div>`
         ).join("");
 
-    const agents = [...new Set(allData.map(getAgent))];
+    /* AGENTS */
+    const grouped = {};
+    data.forEach(i=>{
+        const a = getAgent(i);
+        if(!grouped[a]) grouped[a]=[];
+        grouped[a].push(i);
+    });
 
-    document.getElementById("agentFilters").innerHTML =
-        `<div class="filter-btn ${!selectedAgent?'active':''}" onclick="toggleAgent(null)">All Agents</div>` +
-        agents.map(a =>
-            `<div class="filter-btn ${selectedAgent===a?'active':''}" onclick="toggleAgent('${a}')">${a}</div>`
-        ).join("");
+    let teamHTML = "";
+    Object.keys(grouped).sort().forEach(agent=>{
+        teamHTML += `
+            <div class="member-item ${selectedAgent===agent?'active':''}"
+                 onclick="toggleAgent('${agent}')">
+                <div>${agent}</div>
+                <div>${grouped[agent].length}</div>
+            </div>
+        `;
+    });
 
+    document.getElementById("teamMembers").innerHTML = teamHTML;
+
+    /* CARDS */
     let html = "";
 
-    data.forEach(issue => {
+    data.forEach(issue=>{
 
-        const priority = getPriority(issue);
-        const agent = getAgent(issue);
-        const desc = issue.body || "No description provided.";
+        const parsed = extractDate(issue.title);
+
+        const title = parsed ? parsed.cleanTitle : issue.title;
+        const raised = parsed ? parsed.full : "Not set";
 
         html += `
         <div class="milestone-card">
 
             <div class="milestone-header">
-                <div>#${issue.number} ${issue.title}</div>
-                <div style="margin-top:8px;">
-                    <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
-                    <span class="agent-tag">${agent}</span>
-                </div>
+                <div>#${issue.number} ${title}</div>
             </div>
 
             <div class="issue-item">
-
                 <div class="description-label">Description:</div>
-                <div class="description-text">${desc}</div>
-
-                <div class="meta">📅 Raised: ${extractDate(issue)}</div>
-
+                <div class="description-text">${issue.body || "No description"}</div>
+                <div class="meta">📅 Raised: ${raised}</div>
             </div>
 
         </div>`;
@@ -319,10 +400,6 @@ function render() {
 }
 
 fetchData();
-
-function forceRefresh() {
-    fetchData(true);
-}
 
 </script>
 
