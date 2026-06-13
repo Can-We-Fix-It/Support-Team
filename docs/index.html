@@ -267,20 +267,22 @@ function getAgent(issue) {
 
 /* DATE LABEL → MONTH */
 function getMonth(issue) {
-    const labels = issue.labels?.map(l => l.name?.toLowerCase()) || [];
+    const labels = issue.labels?.map(l => l.name) || [];
 
     const dateLabel = labels.find(l => l.startsWith("date-"));
 
     if (!dateLabel) return "unknown";
 
+    // date-3-march-2026
     const parts = dateLabel.replace("date-", "").split("-");
 
     if (parts.length < 3) return "unknown";
 
+    const day = parts[0];
     const month = parts[1];
     const year = parts[2];
 
-    return month.charAt(0).toUpperCase() + month.slice(1) + " " + year;
+    return `${day.charAt(0).toUpperCase() + day.slice(1)} ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
 }
 
 /* FETCH */
