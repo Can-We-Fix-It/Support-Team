@@ -232,7 +232,7 @@ function getPriority(issue) {
 /* AGENT */
 function getAgent(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
-    const priorityLabels = ["Severe","Medium","Low"];
+    const priorityLabels = ["Severe", "Medium", "Low"];
 
     return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
@@ -262,7 +262,11 @@ function groupByAgent(data) {
 
     data.forEach(issue => {
         const agent = getAgent(issue);
-        if (!map[agent]) map[agent] = [];
+
+        if (!map[agent]) {
+            map[agent] = [];
+        }
+
         map[agent].push(issue);
     });
 
@@ -282,26 +286,30 @@ function render() {
         </div>
     `;
 
-    /* TEAM */
+    /* TEAM FILTERS */
     let teamHTML = "";
 
-    Object.keys(grouped).forEach(agent => {
+    Object.keys(grouped)
+        .sort()
+        .forEach(agent => {
 
-        const issues = grouped[agent];
-
-        teamHTML += `
-            <div class="member-item ${selectedAgent===agent?'active':''}"
-                 onclick="selectAgent('${agent}')">
-                <div>${agent}</div>
-                <div>${issues.length}</div>
-            </div>
-        `;
-    });
+            teamHTML += `
+                <div
+                    class="member-item ${selectedAgent === agent ? "active" : ""}"
+                    onclick="selectAgent('${agent}')"
+                >
+                    <div>${agent}</div>
+                    <div>${grouped[agent].length}</div>
+                </div>
+            `;
+        });
 
     document.getElementById("teamMembers").innerHTML = teamHTML;
 
-    /* ISSUES */
-    let display = selectedAgent ? grouped[selectedAgent] : allData;
+    /* DISPLAY DATA */
+    const display = selectedAgent
+        ? grouped[selectedAgent]
+        : allData;
 
     let html = "";
 
@@ -310,32 +318,79 @@ function render() {
         const priority = getPriority(issue);
         const agent = getAgent(issue);
 
+        const description = issue.body
+            ? issue.body.substring(0, 400)
+            : "No description provided.";
+
         html += `
-        <div class="milestone-card">
-            <div class="milestone-header">
-                <div>#${issue.number} ${issue.title}</div>
+            <div class="milestone-card">
 
-                <div style="margin-top:8px;">
-                    <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
-                    <span class="agent-tag">${agent}</span>
+                <div class="milestone-header">
+
+                    <div>
+                        #${issue.number} ${issue.title}
+                    </div>
+
+                    <div style="margin-top:8px;">
+                        <span class="badge priority-${priority.toLowerCase()}">
+                            ${priority}
+                        </span>
+
+                        <span class="agent-tag">
+                            ${agent}
+                        </span>
+                    </div>
+
                 </div>
-            </div>
 
-            <div class="issue-item meta">
-                <a href="${issue.html_url}" target="_blank">
-                    View on GitHub →
-                </a>
+                <div class="issue-item">
+
+                    <div style="
+                        background:#f8f9fa;
+                        padding:12px;
+                        border-radius:8px;
+                        margin-bottom:12px;
+                        border-left:4px solid #667eea;
+                        line-height:1.5;
+                        white-space:pre-wrap;
+                        color:#333;
+                    ">
+                        ${description}
+                        ${issue.body && issue.body.length > 400 ? "..." : ""}
+                    </div>
+
+                    <div class="meta">
+                        Created:
+                        ${new Date(issue.created_at).toLocaleDateString()}
+                    </div>
+
+                    <div class="meta">
+                        Updated:
+                        ${new Date(issue.updated_at).toLocaleDateString()}
+                    </div>
+
+                    <div class="meta" style="margin-top:10px;">
+                        <a href="${issue.html_url}" target="_blank">
+                            View on GitHub →
+                        </a>
+                    </div>
+
+                </div>
+
             </div>
-        </div>
         `;
     });
 
     document.getElementById("milestones").innerHTML = html;
 }
 
-/* SELECT */
+/* AGENT FILTER */
 function selectAgent(agent) {
-    selectedAgent = selectedAgent === agent ? null : agent;
+    selectedAgent =
+        selectedAgent === agent
+            ? null
+            : agent;
+
     render();
 }
 
