@@ -19,13 +19,12 @@ body {
     padding:15px;
 }
 
-/* ===== CONTAINER ===== */
 .container {
     max-width:1200px;
     margin:0 auto;
 }
 
-/* ===== HEADER ===== */
+/* HEADER */
 header {
     text-align:center;
     color:white;
@@ -35,41 +34,22 @@ header {
 h1 { font-size:2.2em; }
 .subtitle { opacity:0.9; }
 
-/* ===== BUTTONS ===== */
-.refresh-btn, .print-btn {
-    margin-top:10px;
-    padding:8px 12px;
-    border-radius:8px;
-    border:none;
-    cursor:pointer;
-    font-weight:500;
-}
-
-.refresh-btn { background:white; }
-.print-btn { background:#111; color:white; }
-
-/* ===== STATS ===== */
-.stats {
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-    gap:10px;
-    margin-bottom:15px;
-}
-
-/* ===== FILTERS ===== */
-#monthFilters,#priorityFilters {
+/* BUTTONS ROW (filters now horizontal) */
+.filter-row {
     display:flex;
-    gap:10px;
     flex-wrap:wrap;
+    gap:10px;
     margin-bottom:15px;
 }
 
+/* FILTER BUTTONS */
 .filter-btn {
     padding:8px 12px;
     border-radius:8px;
     cursor:pointer;
     background:white;
     font-size:13px;
+    transition:0.2s;
 }
 
 .filter-btn.active {
@@ -77,7 +57,28 @@ h1 { font-size:2.2em; }
     color:white;
 }
 
-/* ===== CARD ===== */
+/* STATS */
+.stats {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.stat-box {
+    background:white;
+    padding:15px;
+    border-radius:10px;
+    text-align:center;
+}
+
+.stat-number {
+    font-size:1.8em;
+    color:#667eea;
+    font-weight:bold;
+}
+
+/* ISSUE CARD */
 .milestone-card {
     background:white;
     border-radius:12px;
@@ -91,7 +92,6 @@ h1 { font-size:2.2em; }
     background: linear-gradient(135deg,#667eea,#764ba2);
 }
 
-/* ===== BADGES ===== */
 .badge {
     padding:3px 8px;
     border-radius:12px;
@@ -112,7 +112,7 @@ h1 { font-size:2.2em; }
     font-size:0.7em;
 }
 
-/* ===== DESCRIPTION ===== */
+/* BODY */
 .issue-item {
     padding:12px;
 }
@@ -120,23 +120,48 @@ h1 { font-size:2.2em; }
 .description-label {
     font-weight:600;
     margin-bottom:5px;
+    color:#333;
 }
 
 .description-text {
     white-space:pre-wrap;
     line-height:1.5;
+    color:#222;
+    margin-bottom:10px;
+
+    /* FIX IMAGE BREAKING BOX */
+    overflow:hidden;
 }
 
-/* ===== META ===== */
+.description-text img {
+    max-width:100%;
+    height:auto;
+    display:block;
+    margin-top:8px;
+}
+
+/* META */
 .meta {
     font-size:0.85em;
     color:#666;
     margin-top:4px;
 }
 
-/* ===== MOBILE ===== */
-@media (max-width:900px){
-    .main-content{grid-template-columns:1fr;}
+/* PRINT */
+.print-btn {
+    margin-top:10px;
+    padding:6px 10px;
+    border-radius:8px;
+    background:#111;
+    color:white;
+    border:none;
+    cursor:pointer;
+    font-size:12px;
+}
+
+/* MOBILE */
+@media (max-width:900px) {
+    h1 { font-size:1.6em; }
 }
 </style>
 </head>
@@ -148,15 +173,14 @@ h1 { font-size:2.2em; }
 <header>
 <h1>🎯 Support Dashboard</h1>
 <p class="subtitle">GitHub Issues Tracking</p>
-
-<button class="refresh-btn" onclick="forceRefresh()">🔄 Refresh</button>
-<button class="print-btn" onclick="window.print()">🖨 Print</button>
 </header>
 
 <div class="stats" id="stats"></div>
 
-<div id="monthFilters"></div>
-<div id="priorityFilters"></div>
+<!-- FILTERS -->
+<div class="filter-row" id="monthFilters"></div>
+<div class="filter-row" id="priorityFilters"></div>
+<div class="filter-row" id="agentFilters"></div>
 
 <div id="milestones"></div>
 
@@ -164,151 +188,189 @@ h1 { font-size:2.2em; }
 
 <script>
 
-const OWNER="Can-We-Fix-It";
-const REPO="Support-Team";
-const CACHE_KEY="dash_cache_v3";
+const OWNER = "Can-We-Fix-It";
+const REPO = "Support-Team";
 
-let allData=[];
-let selectedMonth=null;
-let selectedPriority=null;
+let allData = [];
+let selectedMonth = null;
+let selectedPriority = null;
+let selectedAgent = null;
 
-/* ===== CACHE ===== */
-function saveCache(data){
-    localStorage.setItem(CACHE_KEY,JSON.stringify({data,t:Date.now()}));
-}
-function loadCache(){
-    return JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
-}
+/* ---------------- PRIORITY ---------------- */
+function getPriority(issue) {
+    const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
 
-/* ===== TITLE DATE PARSER ===== */
-function extractTitleDate(title){
-    const match = title.match(/(\d{1,2})(st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})/);
-    if(!match) return null;
-    return { day:match[1], month:match[3], year:match[4], text:match[0] };
-}
+    if (labels.includes("severe")) return "Severe";
+    if (labels.includes("high")) return "High";
+    if (labels.includes("medium")) return "Medium";
+    if (labels.includes("low")) return "Low";
 
-/* ===== PRIORITY FIXED ===== */
-function getPriority(issue){
-    const labels = issue.labels?.map(l=>l.name)||[];
-
-    if(labels.includes("Severe")) return "Severe";
-    if(labels.includes("High")) return "High";
-    if(labels.includes("Medium")) return "Medium";
     return "Low";
 }
 
-/* ===== MONTH ===== */
-function getMonth(issue){
-    const t = extractTitleDate(issue.title);
-    if(t) return t.month;
-
-    const labels = issue.labels?.map(l=>l.name)||[];
-    const d = labels.find(l=>l.startsWith("date-"));
-    if(!d) return "unknown";
-
-    return d.replace("date-","").split("-")[1];
+/* ---------------- AGENT ---------------- */
+function getAgent(issue) {
+    const labels = issue.labels?.map(l => l.name) || [];
+    const reserved = ["Severe","High","Medium","Low"];
+    return labels.find(l => !reserved.includes(l)) || "Unassigned";
 }
 
-/* ===== RAISED ===== */
-function getRaised(issue){
-    const t = extractTitleDate(issue.title);
-    if(t) return `${t.day} ${t.month} ${t.year}`;
+/* ---------------- MONTH FROM TITLE OR LABEL ---------------- */
+function extractDate(issue) {
 
-    const labels = issue.labels?.map(l=>l.name)||[];
-    const d = labels.find(l=>l.startsWith("date-"));
-    if(!d) return "Not set";
+    // 1. try label
+    const labels = issue.labels?.map(l => l.name.toLowerCase()) || [];
+    let dateLabel = labels.find(l => l.startsWith("date-"));
 
-    const p=d.replace("date-","").split("-");
-    return `${p[0]} ${p[1]} ${p[2]}`;
-}
+    let text = issue.title;
 
-/* ===== FETCH ===== */
-async function fetchData(force=false){
-    const cached=loadCache();
+    // 2. try title format like "4th June 2026"
+    const match = issue.title.match(/(\d{1,2})(st|nd|rd|th)?\s([A-Za-z]+)\s(\d{4})/);
 
-    if(cached&&!force){
-        allData=cached.data;
-        render();
-        return;
+    if (match) {
+        return {
+            full: match[0],
+            month: match[3].toLowerCase()
+        };
     }
 
-    const res=await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`);
-    const data=await res.json();
+    if (dateLabel) {
+        const parts = dateLabel.replace("date-","").split("-");
+        return {
+            full: `${parts[0]} ${parts[1]} ${parts[2]}`,
+            month: parts[1].toLowerCase()
+        };
+    }
 
-    allData=data;
-    saveCache(data);
+    return { full:"Not set", month:"unknown" };
+}
+
+/* ---------------- FETCH ---------------- */
+async function fetchData() {
+    const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
+    );
+
+    const data = await res.json();
+    if (!Array.isArray(data)) return;
+
+    allData = data;
     render();
 }
 
-function forceRefresh(){fetchData(true);}
+/* ---------------- FILTERS ---------------- */
+function toggleMonth(m) {
+    selectedMonth = selectedMonth === m ? null : m;
+    render();
+}
 
-/* ===== FILTERS ===== */
-function selectMonth(m){selectedMonth=selectedMonth===m?null:m;render();}
-function selectPriority(p){selectedPriority=selectedPriority===p?null:p;render();}
+function togglePriority(p) {
+    selectedPriority = selectedPriority === p ? null : p;
+    render();
+}
 
-/* ===== RENDER ===== */
-function render(){
+function toggleAgent(a) {
+    selectedAgent = selectedAgent === a ? null : a;
+    render();
+}
 
-let data=[...allData];
+/* ---------------- RENDER ---------------- */
+function render() {
 
-if(selectedMonth) data=data.filter(i=>getMonth(i)===selectedMonth);
-if(selectedPriority) data=data.filter(i=>getPriority(i)===selectedPriority);
+    let data = allData;
 
-/* stats */
-document.getElementById("stats").innerHTML=
-`<div class="stats">
-<div class="stat-box"><div class="stat-number">${data.length}</div><div>Total Issues</div></div>
-</div>`;
+    if (selectedMonth) {
+        data = data.filter(i => extractDate(i).month === selectedMonth);
+    }
 
-/* months */
-const months=[...new Set(allData.map(getMonth).filter(m=>m!=="unknown"))];
-document.getElementById("monthFilters")=
-document.getElementById("monthFilters").innerHTML=
-`<div class="filter-btn ${!selectedMonth?'active':''}" onclick="selectMonth(null)">All Months</div>`
-+months.map(m=>`<div class="filter-btn ${selectedMonth===m?'active':''}" onclick="selectMonth('${m}')">${m}</div>`).join("");
+    if (selectedPriority) {
+        data = data.filter(i => getPriority(i) === selectedPriority);
+    }
 
-/* priority */
-document.getElementById("priorityFilters").innerHTML=
-`<div class="filter-btn ${!selectedPriority?'active':''}" onclick="selectPriority(null)">All Priority</div>`
-+["Severe","High","Medium","Low"].map(p=>`
-<div class="filter-btn ${selectedPriority===p?'active':''}" onclick="selectPriority('${p}')">${p}</div>
-`).join("");
+    if (selectedAgent) {
+        data = data.filter(i => getAgent(i) === selectedAgent);
+    }
 
-/* cards */
-document.getElementById("milestones").innerHTML=
-data.map(i=>{
+    /* STATS */
+    document.getElementById("stats").innerHTML = `
+        <div class="stat-box">
+            <div class="stat-number">${data.length}</div>
+            <div>Total Issues</div>
+        </div>
+    `;
 
-const t=extractTitleDate(i.title);
-let title=i.title;
-if(t) title=title.replace(t.text,"").trim();
+    /* MONTH FILTER */
+    const months = [...new Set(allData.map(i => extractDate(i).month).filter(m => m !== "unknown"))];
 
-return `
-<div class="milestone-card">
+    document.getElementById("monthFilters").innerHTML =
+        `<div class="filter-btn ${!selectedMonth?'active':''}" onclick="toggleMonth(null)">All Months</div>` +
+        months.map(m =>
+            `<div class="filter-btn ${selectedMonth===m?'active':''}" onclick="toggleMonth('${m}')">${m}</div>`
+        ).join("");
 
-<div class="milestone-header">
-<div>#${i.number} ${title}</div>
+    /* PRIORITY FILTER */
+    const priorities = ["Low","Medium","High","Severe"];
 
-<div style="margin-top:8px;">
-<span class="badge priority-${getPriority(i).toLowerCase()}">${getPriority(i)}</span>
-<span class="agent-tag">${(i.labels?.map(l=>l.name).find(l=>!["Severe","High","Medium","Low"].includes(l)))||"Unassigned"}</span>
-</div>
+    document.getElementById("priorityFilters").innerHTML =
+        `<div class="filter-btn ${!selectedPriority?'active':''}" onclick="togglePriority(null)">All Priority</div>` +
+        priorities.map(p =>
+            `<div class="filter-btn ${selectedPriority===p?'active':''}" onclick="togglePriority('${p}')">${p}</div>`
+        ).join("");
 
-</div>
+    /* AGENT FILTER */
+    const agents = [...new Set(allData.map(getAgent))];
 
-<div class="issue-item">
+    document.getElementById("agentFilters").innerHTML =
+        `<div class="filter-btn ${!selectedAgent?'active':''}" onclick="toggleAgent(null)">All Agents</div>` +
+        agents.map(a =>
+            `<div class="filter-btn ${selectedAgent===a?'active':''}" onclick="toggleAgent('${a}')">${a}</div>`
+        ).join("");
 
-<div class="description-label">Description:</div>
-<div class="description-text">${i.body||"No description"}</div>
+    /* CARDS */
+    let html = "";
 
-<div class="meta">Created: ${new Date(i.created_at).toLocaleDateString()}</div>
-<div class="meta">📅 Raised: ${getRaised(i)}</div>
-<div class="meta">Updated: ${new Date(i.updated_at).toLocaleDateString()}</div>
+    data.forEach(issue => {
 
-</div>
+        const priority = getPriority(issue);
+        const agent = getAgent(issue);
+        const date = extractDate(issue);
 
-</div>`;
-}).join("");
+        const desc = issue.body || "No description provided.";
 
+        html += `
+        <div class="milestone-card">
+
+            <div class="milestone-header">
+                <div>#${issue.number} ${issue.title}</div>
+                <div style="margin-top:8px;">
+                    <span class="badge priority-${priority.toLowerCase()}">${priority}</span>
+                    <span class="agent-tag">${agent}</span>
+                </div>
+            </div>
+
+            <div class="issue-item">
+
+                <div class="description-label">Description:</div>
+                <div class="description-text">${desc}</div>
+
+                <div class="meta">📅 Raised: ${date.full}</div>
+                <div class="meta">Created: ${new Date(issue.created_at).toLocaleDateString()}</div>
+                <div class="meta">Updated: ${new Date(issue.updated_at).toLocaleDateString()}</div>
+
+                <a class="meta" href="${issue.html_url}" target="_blank">
+                    View on GitHub →
+                </a>
+
+                <button class="print-btn" onclick="window.print()">
+                    Print
+                </button>
+
+            </div>
+
+        </div>`;
+    });
+
+    document.getElementById("milestones").innerHTML = html;
 }
 
 fetchData();
