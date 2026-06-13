@@ -1,175 +1,434 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Issue Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Team Dashboard</title>
 
 <style>
+* {
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
 body {
-  font-family: Arial, sans-serif;
-  background: #f4f6f8;
-  margin: 0;
-  padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    min-height:100vh;
+    padding:15px;
 }
 
-/* HEADER */
-.header {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 20px;
+/* ===== CONTAINER ===== */
+.container {
+    max-width:1200px;
+    margin:0 auto;
 }
 
-/* CARD */
-.issue-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-  border-left: 6px solid #4f46e5;
-  transition: 0.2s ease;
+/* ===== HEADER ===== */
+header {
+    text-align:center;
+    color:white;
+    margin-bottom:25px;
 }
 
-.issue-card:hover {
-  transform: translateY(-2px);
+h1 {
+    font-size:2.2em;
 }
 
-/* TITLE */
-.issue-title {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 10px;
+.subtitle {
+    opacity:0.9;
 }
 
-/* DESCRIPTION */
-.issue-desc {
-  background: #f9fafb;
-  padding: 12px;
-  border-radius: 10px;
-  color: #333;
-  white-space: pre-wrap;
-  line-height: 1.4;
-  font-size: 14px;
+/* ===== STATS ===== */
+.stats {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-bottom:20px;
 }
 
-/* META */
-.meta {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 13px;
-  color: #555;
+.stat-box {
+    background:white;
+    padding:15px;
+    border-radius:10px;
+    text-align:center;
 }
 
-/* BADGES */
+.stat-number {
+    font-size:1.8em;
+    color:#667eea;
+    font-weight:bold;
+}
+
+/* ===== LAYOUT ===== */
+.main-content {
+    display:grid;
+    grid-template-columns:260px 1fr;
+    gap:15px;
+}
+
+/* ===== TEAM LIST ===== */
+.team-members {
+    background:white;
+    border-radius:12px;
+    padding:8px;
+    height:fit-content;
+    position:sticky;
+    top:10px;
+}
+
+.member-item {
+    padding:10px;
+    border-bottom:1px solid #eee;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    font-size:0.9em;
+    transition:0.2s;
+}
+
+.member-item:hover {
+    background:#f5f5f5;
+}
+
+.member-item.active {
+    background:#667eea;
+    color:white;
+}
+
+/* ===== ISSUE CARD ===== */
+.milestone-card {
+    background:white;
+    border-radius:12px;
+    margin-bottom:15px;
+    overflow:hidden;
+}
+
+.milestone-header {
+    padding:12px;
+    color:white;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+}
+
+.milestone-header div:first-child {
+    font-weight:600;
+    word-break:break-word;
+}
+
+/* ===== BADGES ===== */
 .badge {
-  background: #eef2ff;
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-size: 12px;
+    padding:3px 8px;
+    border-radius:12px;
+    font-size:0.7em;
+    margin-right:5px;
 }
 
-/* STATUS */
-.status-open {
-  border-left-color: #22c55e;
+.priority-low { background:#44aa44; color:white; }
+.priority-medium { background:#ffaa00; color:white; }
+.priority-severe { background:#ff4444; color:white; }
+
+.agent-tag {
+    background:#111;
+    color:white;
+    padding:3px 8px;
+    border-radius:12px;
+    font-size:0.7em;
 }
 
-.status-closed {
-  border-left-color: #ef4444;
+/* ===== ISSUE BODY ===== */
+.issue-item {
+    padding:12px;
+}
+
+.meta {
+    font-size:0.85em;
+    color:#666;
+}
+
+/* ===== LINK ===== */
+a {
+    color:#667eea;
+    text-decoration:none;
+}
+
+a:hover {
+    text-decoration:underline;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 900px) {
+
+    .main-content {
+        grid-template-columns:1fr;
+    }
+
+    .team-members {
+        position:relative;
+        display:flex;
+        overflow-x:auto;
+        white-space:nowrap;
+        gap:8px;
+        padding:10px;
+    }
+
+    .member-item {
+        min-width:140px;
+        border-bottom:none;
+        border-right:1px solid #eee;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:5px;
+    }
+
+    h1 {
+        font-size:1.6em;
+    }
+
+    .stats {
+        grid-template-columns:repeat(2,1fr);
+    }
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">📋 GitHub Issue Dashboard</div>
+<div class="container">
 
-<div id="issues"></div>
+<header>
+<h1>🎯 Support Dashboard</h1>
+<p class="subtitle">GitHub Issues Tracking</p>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<div class="main-content">
+    <div class="team-members" id="teamMembers"></div>
+    <div id="milestones"></div>
+</div>
+
+</div>
 
 <script>
-/* =========================
-   CONFIG (EDIT THIS)
-========================= */
 
-// Replace with your repo API endpoint
-const API_URL = "https://api.github.com/repos/OWNER/REPO/issues";
+const OWNER = "Can-We-Fix-It";
+const REPO = "Support-Team";
 
-// If private repo, add token (recommended to hide later in backend)
-const TOKEN = ""; // optional
+let allData = [];
+let selectedAgent = null;
 
-/* =========================
-   FETCH ISSUES
-========================= */
+/* PRIORITY */
+function getPriority(issue) {
+    const labels = issue.labels?.map(l => l.name) || [];
 
-async function fetchIssues() {
-  const res = await fetch(API_URL, {
-    headers: TOKEN ? {
-      Authorization: `Bearer ${TOKEN}`
-    } : {}
-  });
+    if (labels.includes("Severe")) return "Severe";
+    if (labels.includes("Medium")) return "Medium";
+    if (labels.includes("Low")) return "Low";
 
-  const data = await res.json();
-  renderIssues(data);
+    return "Low";
 }
 
-/* =========================
-   HELPERS
-========================= */
+/* AGENT */
+function getAgent(issue) {
+    const labels = issue.labels?.map(l => l.name) || [];
+    const priorityLabels = ["Severe", "Medium", "Low"];
 
-function getLabel(issue, prefix) {
-  const label = issue.labels.find(l => l.name.startsWith(prefix));
-  if (!label) return "Not set";
-
-  return label.name
-    .replace(prefix, "")
-    .replaceAll("-", " ")
-    .replace(/\b\w/g, c => c.toUpperCase());
+    return labels.find(l => !priorityLabels.includes(l)) || "Unassigned";
 }
 
-/* =========================
-   RENDER UI
-========================= */
+/* ✅ NEW: RAISED DATE FROM LABEL */
+function getRaisedDate(issue) {
+    const labels = issue.labels?.map(l => l.name) || [];
+    const dateLabel = labels.find(l => l.startsWith("date-"));
 
-function renderIssues(issues) {
-  const container = document.getElementById("issues");
+    if (!dateLabel) return "Not set";
 
-  container.innerHTML = issues.map(issue => {
+    return dateLabel
+        .replace("date-", "")
+        .replaceAll("-", " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
 
-    const agent = getLabel(issue, "agent-");
-    const date = getLabel(issue, "date-");
+/* ✅ NEW: ASSIGNEE */
+function getAssignee(issue) {
+    if (issue.assignees && issue.assignees.length > 0) {
+        return issue.assignees.map(a => a.login).join(", ");
+    }
 
-    const statusClass =
-      issue.state === "open" ? "status-open" : "status-closed";
+    return "Unassigned";
+}
 
-    return `
-      <div class="issue-card ${statusClass}">
+/* FETCH */
+async function fetchData() {
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
+        );
 
-        <div class="issue-title">
-          #${issue.number} ${issue.title}
+        const issues = await res.json();
+
+        if (!Array.isArray(issues)) return;
+
+        allData = issues;
+        render();
+
+    } catch (err) {
+        console.log("Error:", err);
+    }
+}
+
+/* GROUP */
+function groupByAgent(data) {
+    const map = {};
+
+    data.forEach(issue => {
+        const agent = getAgent(issue);
+
+        if (!map[agent]) {
+            map[agent] = [];
+        }
+
+        map[agent].push(issue);
+    });
+
+    return map;
+}
+
+/* RENDER */
+function render() {
+
+    const grouped = groupByAgent(allData);
+
+    document.getElementById("stats").innerHTML = `
+        <div class="stat-box">
+            <div class="stat-number">${allData.length}</div>
+            <div>Total Issues</div>
         </div>
-
-        <div class="issue-desc">
-${issue.body || "No description provided"}
-        </div>
-
-        <div class="meta">
-          <span class="badge">👤 Agent: ${agent}</span>
-          <span class="badge">📅 Raised: ${date}</span>
-          <span class="badge">📌 Status: ${issue.state}</span>
-        </div>
-
-      </div>
     `;
-  }).join("");
+
+    let teamHTML = "";
+
+    Object.keys(grouped)
+        .sort()
+        .forEach(agent => {
+
+            teamHTML += `
+                <div
+                    class="member-item ${selectedAgent === agent ? "active" : ""}"
+                    onclick="selectAgent('${agent}')"
+                >
+                    <div>${agent}</div>
+                    <div>${grouped[agent].length}</div>
+                </div>
+            `;
+        });
+
+    document.getElementById("teamMembers").innerHTML = teamHTML;
+
+    const display = selectedAgent
+        ? grouped[selectedAgent]
+        : allData;
+
+    let html = "";
+
+    display.forEach(issue => {
+
+        const priority = getPriority(issue);
+        const agent = getAgent(issue);
+
+        const raisedDate = getRaisedDate(issue);
+        const assignee = getAssignee(issue);
+
+        const description = issue.body
+            ? issue.body.substring(0, 400)
+            : "No description provided.";
+
+        html += `
+            <div class="milestone-card">
+
+                <div class="milestone-header">
+
+                    <div>
+                        #${issue.number} ${issue.title}
+                    </div>
+
+                    <div style="margin-top:8px;">
+                        <span class="badge priority-${priority.toLowerCase()}">
+                            ${priority}
+                        </span>
+
+                        <span class="agent-tag">
+                            ${agent}
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="issue-item">
+
+                    <div style="
+                        background:#f8f9fa;
+                        padding:12px;
+                        border-radius:8px;
+                        margin-bottom:12px;
+                        border-left:4px solid #667eea;
+                        line-height:1.5;
+                        white-space:pre-wrap;
+                        color:#333;
+                    ">
+                        ${description}
+                        ${issue.body && issue.body.length > 400 ? "..." : ""}
+                    </div>
+
+                    <div class="meta">
+                        Created:
+                        ${new Date(issue.created_at).toLocaleDateString()}
+                    </div>
+
+                    <div class="meta">
+                        📅 Raised Date:
+                        ${raisedDate}
+                    </div>
+
+                    <div class="meta">
+                        👤 Assignee:
+                        ${assignee}
+                    </div>
+
+                    <div class="meta">
+                        Updated:
+                        ${new Date(issue.updated_at).toLocaleDateString()}
+                    </div>
+
+                    <div class="meta" style="margin-top:10px;">
+                        <a href="${issue.html_url}" target="_blank">
+                            View on GitHub →
+                        </a>
+                    </div>
+
+                </div>
+
+            </div>
+        `;
+    });
+
+    document.getElementById("milestones").innerHTML = html;
 }
 
-/* =========================
-   START
-========================= */
+/* AGENT FILTER */
+function selectAgent(agent) {
+    selectedAgent =
+        selectedAgent === agent
+            ? null
+            : agent;
 
-fetchIssues();
+    render();
+}
+
+fetchData();
+setInterval(fetchData, 60000);
+
 </script>
 
 </body>
