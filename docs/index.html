@@ -3,10 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Team Dashboard (Cached)</title>
+<title>Support Team Dashboard</title>
 
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+* {
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial;
@@ -15,17 +19,28 @@ body {
     padding:15px;
 }
 
-.container { max-width:1200px; margin:0 auto; }
+/* ===== CONTAINER ===== */
+.container {
+    max-width:1200px;
+    margin:0 auto;
+}
 
+/* ===== HEADER ===== */
 header {
     text-align:center;
     color:white;
     margin-bottom:25px;
 }
 
-h1 { font-size:2.2em; }
-.subtitle { opacity:0.9; }
+h1 {
+    font-size:2.2em;
+}
 
+.subtitle {
+    opacity:0.9;
+}
+
+/* ===== STATS ===== */
 .stats {
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -33,6 +48,7 @@ h1 { font-size:2.2em; }
     margin-bottom:15px;
 }
 
+/* ===== MONTH FILTER ===== */
 #monthFilters {
     display:flex;
     gap:10px;
@@ -50,8 +66,12 @@ h1 { font-size:2.2em; }
     transition:0.2s;
 }
 
-.month-btn.active { background:#111; color:white; }
+.month-btn.active {
+    background:#111;
+    color:white;
+}
 
+/* ===== STATS BOX ===== */
 .stat-box {
     background:white;
     padding:15px;
@@ -65,19 +85,27 @@ h1 { font-size:2.2em; }
     font-weight:bold;
 }
 
+/* ===== LAYOUT ===== */
 .main-content {
     display:grid;
     grid-template-columns:260px 1fr;
     gap:15px;
 }
 
+/* ===== TEAM LIST ===== */
 .team-members {
     background:white;
     border-radius:12px;
     padding:8px;
     height:fit-content;
-    position:sticky;
-    top:10px;
+}
+
+/* DESKTOP STICKY ONLY */
+@media (min-width: 901px) {
+    .team-members {
+        position: sticky;
+        top: 10px;
+    }
 }
 
 .member-item {
@@ -86,10 +114,20 @@ h1 { font-size:2.2em; }
     cursor:pointer;
     display:flex;
     justify-content:space-between;
+    font-size:0.9em;
+    transition:0.2s;
 }
 
-.member-item.active { background:#667eea; color:white; }
+.member-item:hover {
+    background:#f5f5f5;
+}
 
+.member-item.active {
+    background:#667eea;
+    color:white;
+}
+
+/* ===== ISSUE CARD ===== */
 .milestone-card {
     background:white;
     border-radius:12px;
@@ -103,6 +141,12 @@ h1 { font-size:2.2em; }
     background: linear-gradient(135deg,#667eea,#764ba2);
 }
 
+.milestone-header div:first-child {
+    font-weight:600;
+    word-break:break-word;
+}
+
+/* ===== BADGES ===== */
 .badge {
     padding:3px 8px;
     border-radius:12px;
@@ -122,17 +166,22 @@ h1 { font-size:2.2em; }
     font-size:0.7em;
 }
 
-.issue-item { padding:12px; }
+/* ===== ISSUE BODY ===== */
+.issue-item {
+    padding:12px;
+}
 
 .description-label {
     font-weight:600;
     margin-bottom:5px;
+    color:#333;
 }
 
 .description-text {
     white-space:pre-wrap;
     line-height:1.5;
     color:#222;
+    margin-bottom:10px;
 }
 
 .meta {
@@ -141,19 +190,48 @@ h1 { font-size:2.2em; }
     margin-top:4px;
 }
 
-a { color:#667eea; text-decoration:none; }
-
-.refresh-btn {
-    margin-top:10px;
-    padding:8px 12px;
-    border-radius:8px;
-    border:none;
-    cursor:pointer;
-    background:white;
+/* ===== LINK ===== */
+a {
+    color:#667eea;
+    text-decoration:none;
 }
 
-@media (max-width:900px){
-    .main-content{grid-template-columns:1fr;}
+a:hover {
+    text-decoration:underline;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 900px) {
+
+    .main-content {
+        grid-template-columns:1fr;
+    }
+
+    .team-members {
+        position:relative;
+        display:flex;
+        overflow-x:auto;
+        white-space:nowrap;
+        gap:8px;
+        padding:10px;
+    }
+
+    .member-item {
+        min-width:140px;
+        border-bottom:none;
+        border-right:1px solid #eee;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:5px;
+    }
+
+    h1 {
+        font-size:1.6em;
+    }
+
+    .stats {
+        grid-template-columns:repeat(2,1fr);
+    }
 }
 </style>
 </head>
@@ -164,8 +242,7 @@ a { color:#667eea; text-decoration:none; }
 
 <header>
 <h1>🎯 Support Dashboard</h1>
-<p class="subtitle">Cached GitHub Issues (No Rate Spam)</p>
-<button class="refresh-btn" onclick="forceRefresh()">🔄 Refresh Now</button>
+<p class="subtitle">GitHub Issues Tracking</p>
 </header>
 
 <div class="stats" id="stats"></div>
@@ -189,10 +266,7 @@ let allData = [];
 let selectedAgent = null;
 let selectedMonth = null;
 
-/* =========================
-   CACHE SYSTEM
-========================= */
-
+/* ===== CACHE ===== */
 function saveCache(data) {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
         timestamp: Date.now(),
@@ -202,54 +276,37 @@ function saveCache(data) {
 
 function loadCache() {
     const cached = localStorage.getItem(CACHE_KEY);
-    if (!cached) return null;
-
-    return JSON.parse(cached);
+    return cached ? JSON.parse(cached) : null;
 }
 
-/* =========================
-   FETCH (ONLY WHEN NEEDED)
-========================= */
-
+/* ===== FETCH ===== */
 async function fetchData(force = false) {
 
     const cached = loadCache();
 
-    // ✅ use cache instantly if exists
     if (cached && !force) {
         allData = cached.data;
         render();
         return;
     }
 
-    try {
-        const res = await fetch(
-            `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
-        );
+    const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/issues?state=all&per_page=100`
+    );
 
-        const issues = await res.json();
-        if (!Array.isArray(issues)) return;
+    const issues = await res.json();
+    if (!Array.isArray(issues)) return;
 
-        allData = issues;
-        saveCache(issues);
-        render();
-
-    } catch (err) {
-        console.log("Error:", err);
-    }
+    allData = issues;
+    saveCache(issues);
+    render();
 }
 
-/* =========================
-   MANUAL REFRESH ONLY
-========================= */
 function forceRefresh() {
     fetchData(true);
 }
 
-/* =========================
-   LOGIC (UNCHANGED)
-========================= */
-
+/* ===== LOGIC ===== */
 function getPriority(issue) {
     const labels = issue.labels?.map(l => l.name) || [];
     if (labels.includes("Severe")) return "Severe";
@@ -281,10 +338,7 @@ function getRaisedFull(issue) {
     return `${parts[0]} ${parts[1]} ${parts[2]}`;
 }
 
-/* =========================
-   FILTERS
-========================= */
-
+/* ===== FILTERS ===== */
 function selectAgent(agent) {
     selectedAgent = selectedAgent === agent ? null : agent;
     render();
@@ -295,10 +349,7 @@ function selectMonth(month) {
     render();
 }
 
-/* =========================
-   RENDER
-========================= */
-
+/* ===== RENDER ===== */
 function render() {
 
     let display = allData;
